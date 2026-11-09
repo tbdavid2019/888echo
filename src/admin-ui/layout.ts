@@ -75,7 +75,13 @@ export const accessDeniedHtml = (
 <body>
 <h1>${statusTitle(status)}</h1>
 <p>${escapeHtml(message)}</p>
-<p class="muted">Sign in through the comments widget on any page first, then refresh.
+<p class="muted">Sign in through the comments widget on any page first, or use the direct Admin Login portal with Passkey / Email verification code.</p>
+${status === 401 ? `<div style="margin-top: 1.5rem;">
+  <a href="/admin/login" style="display:inline-block;background:var(--accent);color:#ffffff;padding:0.65rem 1.25rem;border-radius:8px;text-decoration:none;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+    🔐 前往管理員登入頁 (Go to Admin Login)
+  </a>
+</div>` : ""}
+<p class="muted" style="margin-top:1.5rem;font-size:0.875rem;">
   Admins are auto-promoted on sign-in if their email is in
   <code>ADMIN_EMAILS</code>.</p>
 </body>
@@ -152,6 +158,7 @@ export const layout = (
 					icon: "subscriptions",
 				},
 				{ href: "/admin/webhooks", label: "Webhooks", icon: "webhook" },
+				{ href: "/admin/passkeys", label: "Passkeys", icon: "key" },
 			]
 		: [];
 	const systemLinks: NavLink[] = isAdmin

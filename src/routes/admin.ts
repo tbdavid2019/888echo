@@ -139,6 +139,8 @@ import { renderTelegram } from "../admin-ui/pages/telegram";
 import { issueTelegramLinkToken } from "./telegram";
 import { renderSettings } from "../admin-ui/pages/settings";
 import { ownerLogin } from "./admin-owner";
+import { adminLogin } from "./admin-login";
+import { adminPasskeys, renderPasskeysPage } from "./admin-passkeys";
 import {
 	bustSettingsCache,
 	canonicalReactionKinds,
@@ -321,6 +323,9 @@ admin.use("*", async (c, next) => {
 // Unauthenticated by design: the single-use owner token is the credential.
 // Mounted after the guards above so Origin/CSP/no-store apply.
 admin.route("/owner", ownerLogin);
+
+// Admin login portal: Passkey assertion & Email 2FA OTP codes.
+admin.route("/", adminLogin);
 
 // The dashboard's seven aggregates, per D1 binding, for DASHBOARD_MEMO_MS.
 // Several still count whole tables (totals, per-host breakdown), so a refresh
@@ -1357,6 +1362,25 @@ admin.patch("/api/webhooks/:id", async (c) => {
 	});
 	return c.json({ ok: true, id });
 });
+
+// -------------------------- Passkeys management -----------------------------
+admin.get("/passkeys", async (c) => {
+	const user = await requireAdmin(c);
+	if (user instanceof Response) return user;
+	const updateInfo = await peekCachedLatestVersion(c.env);
+	const passkeys = (
+		await c.env.DB.prepare(
+			"SELECT id, user_id, name, credential_id, counter, created_at, last_used_at FROM admin_passkeys WHERE user_id = ? ORDER BY created_at DESC",
+		)
+			.bind(user.id)
+			.all()
+	).results;
+	return c.html(
+		renderPage(c, "Passkeys", renderPasskeysPage(passkeys as any), user, updateInfo),
+	);
+});
+
+admin.route("/", adminPasskeys);
 
 // -------------------------- Cloudflare usage dashboard ----------------------
 //

@@ -3201,6 +3201,7 @@ export type AuditTargetKind =
 	| "webhook"
 	| "saved_reply"
 	| "post"
+	| "passkey"
 	| "system";
 
 export const ADMIN_ACTIONS = [
@@ -3277,6 +3278,8 @@ export const ADMIN_ACTIONS = [
 	"report.resolve",
 	"telegram.link_code",
 	"telegram.unlink",
+	"passkey.create",
+	"passkey.delete",
 ] as const;
 export type AdminAction = (typeof ADMIN_ACTIONS)[number];
 
