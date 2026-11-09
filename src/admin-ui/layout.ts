@@ -157,8 +157,13 @@ export const layout = (
 					label: "Subscriptions",
 					icon: "subscriptions",
 				},
-				{ href: "/admin/webhooks", label: "Webhooks", icon: "webhook" },
 				{ href: "/admin/passkeys", label: "Passkeys", icon: "key" },
+			]
+		: [];
+	const integrationLinks: NavLink[] = isAdmin
+		? [
+				{ href: "/admin/webhooks", label: "Webhooks", icon: "webhook" },
+				{ href: "/admin/telegram", label: "Telegram", icon: "telegram" },
 			]
 		: [];
 	const systemLinks: NavLink[] = isAdmin
@@ -168,7 +173,6 @@ export const layout = (
 					? [{ href: "/admin/usage", label: "Usage", icon: "usage" }]
 					: []),
 				{ href: "/admin/operator", label: "Operator", icon: "operator" },
-				{ href: "/admin/telegram", label: "Telegram", icon: "telegram" },
 				{ href: "/admin/settings", label: "Settings", icon: "settings" },
 			]
 		: [];
@@ -182,6 +186,7 @@ export const layout = (
 			],
 		},
 		{ heading: "Manage", links: manageLinks },
+		{ heading: "Integrations", links: integrationLinks },
 		{ heading: "System", links: systemLinks },
 		{
 			heading: "Help",
