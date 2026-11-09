@@ -376,7 +376,7 @@ app.route("/telegram", telegram);
 
 app.get("/", (c) =>
 	c.text(
-		"Garrul — self-hosted comments on Cloudflare. See https://github.com/KingPin/Garrul",
+		"Garrul — self-hosted comments on Cloudflare. See https://github.com/tbdavid2019/Garrul",
 	),
 );
 

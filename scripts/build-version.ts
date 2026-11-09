@@ -40,7 +40,7 @@ const parseRepo = (): { owner: string; repo: string } => {
 				: "";
 	const m = url.match(/github\.com[:/]([^/]+)\/([^/.]+)/);
 	if (m) return { owner: m[1] as string, repo: m[2] as string };
-	return { owner: "KingPin", repo: "Garrul" };
+	return { owner: "tbdavid2019", repo: "Garrul" };
 };
 
 const { owner, repo } = parseRepo();

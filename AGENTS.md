@@ -3,7 +3,7 @@ title: Garrul — AI Integration Guide
 audience: AI coding assistant helping a developer EMBED Garrul comments on their site
 canonical_url: https://garrul.com/AGENTS.md
 self_url: "{{INSTANCE_URL}}/AGENTS.md"
-repo: https://github.com/KingPin/Garrul
+repo: https://github.com/tbdavid2019/Garrul
 version: "{{VERSION}}"
 ---
 
@@ -1335,7 +1335,7 @@ both `data-api` and the `<script src>`.
   `comments.garrul.com` (linked from `garrul.com`); the widget is
   embedded on `sumguy.com` as the first dogfood deployment.
 - **Support**: file issues at
-  <https://github.com/KingPin/Garrul/issues>. Operator-side problems
+  <https://github.com/tbdavid2019/Garrul/issues>. Operator-side problems
   (deploy, secrets, OAuth setup) belong in `AGENTS-OPERATE.md` and
   `docs/troubleshooting.md`.
 - `docs/THEMING.md` — full CSS variable reference + stability policy.

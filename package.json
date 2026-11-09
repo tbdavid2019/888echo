@@ -1,12 +1,12 @@
 {
   "name": "garrul",
-  "version": "2.40.0",
+  "version": "2.41.0",
   "private": true,
   "description": "Self-hosted comment system on Cloudflare Workers + D1 + KV",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/KingPin/Garrul"
+    "url": "https://github.com/tbdavid2019/Garrul"
   },
   "type": "module",
   "engines": {

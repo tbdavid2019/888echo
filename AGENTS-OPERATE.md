@@ -1,7 +1,7 @@
 ---
 title: Garrul — AI Operations Guide
 audience: AI coding assistant
-repo: https://github.com/KingPin/Garrul
+repo: https://github.com/tbdavid2019/Garrul
 ---
 
 ## 1. What Garrul is (for operators)
@@ -53,7 +53,7 @@ Before running a single command, the user needs:
   Node 22 fails at `npm ci` — see the `node-24-minimum` entry in
   `release-manifest.json`.
 - A clone of the repo, on the latest release tag rather than `main`:
-  `git clone https://github.com/KingPin/Garrul.git && cd Garrul &&
+  `git clone https://github.com/tbdavid2019/Garrul.git && cd Garrul &&
   git checkout "$(git describe --tags --abbrev=0)"`.
 - `wrangler` (installed via `npm install` as a dev dep; no global needed).
 - **Optional credentials**: GitHub OAuth app (GitHub sign-in), Google

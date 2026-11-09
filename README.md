@@ -124,7 +124,7 @@ custom domain, remote migrations, deploy and smoke test:
 zero credentials:
 
 ```bash
-git clone https://github.com/KingPin/Garrul.git
+git clone https://github.com/tbdavid2019/Garrul.git
 cd Garrul
 npm install
 cp wrangler.example.toml wrangler.toml

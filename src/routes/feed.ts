@@ -129,7 +129,7 @@ feed.get("/:slug", async (c) => {
   <updated>${updated}</updated>
   <link rel="self" type="application/atom+xml" href="${xmlEscape(feedSelf)}"/>
   <link rel="alternate" type="text/html" href="${xmlEscape(postLink)}"/>
-  <generator uri="https://github.com/KingPin/Garrul">Garrul</generator>
+  <generator uri="https://github.com/tbdavid2019/Garrul">Garrul</generator>
   ${entries}
 </feed>`;
 
