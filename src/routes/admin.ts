@@ -20,6 +20,7 @@ import { Hono } from "hono";
 import type { Context } from "hono";
 import type { Bindings } from "../index";
 import {
+	destroySession,
 	readSession,
 	revokeOtherSessions,
 	revokeUserSessions,
@@ -326,6 +327,17 @@ admin.route("/owner", ownerLogin);
 
 // Admin login portal: Passkey assertion & Email 2FA OTP codes.
 admin.route("/", adminLogin);
+
+// Admin sign-out route: revokes session & redirects to login
+admin.get("/logout", async (c) => {
+	await destroySession(c);
+	return c.redirect("/admin/login");
+});
+
+admin.post("/logout", async (c) => {
+	await destroySession(c);
+	return c.redirect("/admin/login");
+});
 
 // The dashboard's seven aggregates, per D1 binding, for DASHBOARD_MEMO_MS.
 // Several still count whole tables (totals, per-host breakdown), so a refresh

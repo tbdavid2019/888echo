@@ -271,6 +271,10 @@ ${navHtml}
           <span x-show="theme !== 'dark'" x-cloak>${icon("moon")}</span>
         </button>
         <button class="icon-btn" @click="helpOpen = !helpOpen" aria-label="Keyboard shortcuts">?</button>
+        <a href="/admin/logout" class="icon-btn" aria-label="Sign out" title="登出管理後台 (Sign out)"
+           @click="if (!confirm('確定要登出管理後台嗎？')) $event.preventDefault()">
+          ${icon("logout")}
+        </a>
       </span>
     </div>
   </aside>

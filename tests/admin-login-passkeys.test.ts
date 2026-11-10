@@ -120,4 +120,14 @@ describe("Admin Login & Passkeys Routes", () => {
 		expect(res.status).toBe(200);
 		expect(res.headers.get("content-type")).toContain("text/javascript");
 	});
+
+	it("signs out and redirects to /admin/login on /admin/logout", async () => {
+		const { request, env } = setup();
+		const res = await request("/admin/logout", { sid: ADMIN_SID });
+		expect(res.status).toBe(302);
+		expect(res.headers.get("location")).toBe("/admin/login");
+		// Verify Set-Cookie clears the session cookie
+		const setCookie = res.headers.get("set-cookie") || "";
+		expect(setCookie).toContain("Max-Age=0");
+	});
 });
