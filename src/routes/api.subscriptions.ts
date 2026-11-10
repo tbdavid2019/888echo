@@ -825,7 +825,7 @@ const pageHtml = (message: string, locale: string, extra = ""): string => `
 <html lang="${escapeHtml(locale)}"${LOCALES[locale]?.rtl ? ' dir="rtl"' : ""}>
 <head>
 <meta charset="utf-8">
-<title>Garrul</title>
+<title>888echo</title>
 <style>
   body { font-family: system-ui, -apple-system, Segoe UI, sans-serif;
          max-width: 440px; margin: 4rem auto; padding: 0 1rem;
@@ -834,7 +834,7 @@ const pageHtml = (message: string, locale: string, extra = ""): string => `
 </style>
 </head>
 <body>
-<h1>Garrul</h1>
+<h1>888echo</h1>
 <p>${message}</p>
 ${extra}
 </body>

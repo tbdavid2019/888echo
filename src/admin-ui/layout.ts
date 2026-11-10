@@ -52,7 +52,7 @@ export const accessDeniedHtml = (
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>${statusTitle(status)} — Garrul Admin</title>
+<title>${statusTitle(status)} — 888echo Admin</title>
 <style>
   /* Light default; flip to dark on OS preference. Mirrors the admin theme
      tokens but standalone (this page renders before the app shell / Alpine,
@@ -75,15 +75,14 @@ export const accessDeniedHtml = (
 <body>
 <h1>${statusTitle(status)}</h1>
 <p>${escapeHtml(message)}</p>
-<p class="muted">Sign in through the comments widget on any page first, or use the direct Admin Login portal with Passkey / Email verification code.</p>
+<p class="muted">請透過 888echo 管理員登入入口（支援 Passkey 生物辨識與 Email 2FA 驗證碼）登入後存取後台。</p>
 ${status === 401 ? `<div style="margin-top: 1.5rem;">
   <a href="/admin/login" style="display:inline-block;background:var(--accent);color:#ffffff;padding:0.65rem 1.25rem;border-radius:8px;text-decoration:none;font-weight:600;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
-    🔐 前往管理員登入頁 (Go to Admin Login)
+    🔐 前往 888echo 管理員登入頁 (Go to Admin Login)
   </a>
 </div>` : ""}
 <p class="muted" style="margin-top:1.5rem;font-size:0.875rem;">
-  Admins are auto-promoted on sign-in if their email is in
-  <code>ADMIN_EMAILS</code>.</p>
+  管理者信箱須包含於環境變數 <code>ADMIN_EMAILS</code> 中。</p>
 </body>
 </html>`;
 
@@ -249,7 +248,7 @@ export const layout = (
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>${escapeHtml(title)} — Garrul Admin</title>
+<title>${escapeHtml(title)} — 888echo Admin</title>
 <style>${ADMIN_CSS}</style>
 </head>
 <body>
@@ -257,7 +256,7 @@ ${renderUpdateBanner(updateInfo)}
 <div class="app-shell">
   <div class="scrim" x-show="navOpen" x-cloak @click="navOpen = false"></div>
   <aside class="sidebar" :class="navOpen && 'open'">
-    <a href="/admin" class="brand" @click="navOpen = false">${icon("queue", 22)}<span>Garrul</span></a>
+    <a href="/admin" class="brand" @click="navOpen = false">${icon("queue", 22)}<span>888echo</span></a>
     <nav class="sidebar-nav">
 ${navHtml}
     </nav>

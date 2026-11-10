@@ -374,7 +374,7 @@ const handleMessage = async (
 
 const commandHelpText = (): string =>
 	[
-		"<b>Garrul operator bot</b>",
+		"<b>888echo operator bot</b>",
 		"/queue — pending + reported counts",
 		"/stats — totals and 7-day spam rate",
 		"/comment &lt;id&gt; — a comment's status + author",

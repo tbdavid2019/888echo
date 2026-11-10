@@ -226,7 +226,7 @@ describe("renderDiscordBody", () => {
 		expect(embed.title).toBe("Hello, world!");
 		expect(embed.description).toContain("Hello");
 		expect(typeof embed.color).toBe("number");
-		expect(embed.footer.text).toBe("Garrul");
+		expect(embed.footer.text).toBe("888echo");
 		expect(typeof embed.timestamp).toBe("string");
 	});
 

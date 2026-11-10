@@ -41,8 +41,8 @@ export const renderAbout = (releases: ReleaseSummary[] | null): string => {
 
 	return `
 <div class="card">
-  <h2>About Garrul</h2>
-  <p>Self-hosted comment system on Cloudflare Workers, D1, and KV.</p>
+  <h2>About 888echo</h2>
+  <p>888echo — Sovereign edge comment &amp; discussion engine on Cloudflare Workers, D1, and KV.</p>
   <p>Running version: <code>v${escapeHtml(CURRENT_VERSION)}</code></p>
 </div>
 

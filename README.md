@@ -1,39 +1,31 @@
-# Garrul
+# 888echo
 
-[![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=github)](https://github.com/sponsors/KingPin)
-[![Ko-fi](https://img.shields.io/badge/Ko--fi-Buy_me_a_coffee-FF5E5B?logo=ko-fi&logoColor=white)](https://ko-fi.com/kingpinx)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Version: v2.41.0](https://img.shields.io/badge/version-2.41.0-emerald.svg)](https://github.com/tbdavid2019/Garrul/releases)
+[![Passkey Ready](https://img.shields.io/badge/WebAuthn-Passkey%20Ready-purple.svg)](https://github.com/tbdavid2019/Garrul)
 
-Self-hosted comments for static sites and blogs. Runs on Cloudflare
-Workers + D1 + KV + Turnstile. One Worker per site, no per-comment
-billing, your data stays in your account.
+**888echo** is a high-performance, sovereign edge comment & discussion engine built on Cloudflare
+Workers + D1 + KV + Turnstile. A core pillar of the 888 ecosystem (`888echo`, `888box`, `888a2a`, `888quant`).
+Self-hosted, tracker-free, zero per-comment cost, and your data stays 100% in your own Cloudflare account.
 
-**[Try the live demo →](https://garrul.com/#comments)**
+Self-hosted, but without the operational friction: **no Docker containers, no VPS, and
+no database server maintenance**. Zero OS patching, zero downtime worries, no manual TLS renewals,
+and Cloudflare maintains automatic point-in-time backups of D1 SQLite storage.
 
-Self-hosted, but not the hard kind: **there is no container, no VPS, and
-no database server**. Nothing to patch, no uptime to monitor, no TLS to
-renew, and Cloudflare keeps point-in-time backups of D1 for you. It is
-one Worker, and keeping it current is a single dry-runnable command per
-release. Two credentials to get started (a Turnstile key pair, from one
-dashboard page); every other integration is optional.
-
-- **Threaded comments**: markdown, reactions, an edit/delete window, and
-  a newest/oldest/top sort readers can switch
-- **OAuth sign-in** (GitHub, Google, Facebook, X, Discord) plus anonymous
-  posting, rate-limited and Turnstile-gated
-- **Embeddable widget**: CI-capped at 30 KB gzipped, Shadow-DOM isolated,
-  themeable ([visual theme builder](https://garrul.com/theme)), with an
-  iframe alternative
-- **Reply notifications by email**, built in: readers opt in from the
-  widget, confirm by double opt-in, get a debounced digest, and leave in
-  one click from Gmail's own Unsubscribe button. Bring a Resend key
-  ([`docs/notifications.md`](docs/notifications.md))
-- **Moderator notifications by email**: a digest of what's queued or
-  reported. Off by default; one switch in *Settings → Moderation*
-- **Layered anti-spam**: Turnstile, rate limiting and a strict markdown
-  sanitizer always on, four tunable heuristics and an optional classifier
-  on top, everything routed to the queue
-  ([`docs/ANTISPAM.md`](docs/ANTISPAM.md))
+- **Threaded comments**: Markdown formatting, emoji reactions, edit/delete window, and
+  chronological / top-voted sort readers can switch
+- **Zero-Trust Admin Login**: Passkey (WebAuthn / Touch ID / Face ID) passwordless authentication,
+  plus Email 6-digit OTP verification codes at `/admin/login`
+- **OAuth & Anonymous Posting**: Sign in with GitHub, Google, Facebook, X, or Discord, or post
+  anonymously protected by Cloudflare Turnstile & rate limiting
+- **Dual Container Compatibility**: Embed using `<div id="888echo">` or retain backward
+  compatibility with `<div id="garrul">`
+- **Real-Time Moderation Alerts**: Integrated Discord webhook dual-backup notifications, Slack,
+  Telegram operator bot, and email digests
+- **Shadow-DOM Isolated Widget**: Under 30 KB gzipped, themeable with CSS custom properties,
+  zero styling bleed into host sites
+- **Layered Anti-Spam Architecture**: Turnstile challenges, token minting heuristics, rate-limiting,
+  strict HTML sanitization, and muted-word dictionaries
 - **Import from Disqus, Remark42, Comentario, isso or Cusdis**: upload the
   export in the admin UI — the `.xml.gz` Disqus hands you, the
   `userbackup-<site>-<ts>.gz` Remark42 writes nightly, or Comentario's JSON
@@ -135,11 +127,11 @@ npm run dev               # http://localhost:8787
 
 ## Embedding
 
-Drop the widget into any page:
+Drop the widget into any page (both `id="888echo"` and legacy `id="garrul"` are supported):
 
 ```html
 <div
-  id="garrul"
+  id="888echo"
   data-slug="my-post-slug"
   data-api="https://comments.example.com"
   data-title="My post title"
@@ -164,8 +156,9 @@ an AI assistant at your instance:
   leak in. Restyle by overriding CSS custom properties on the host
   element; those names are part of the public, semver-protected API
   ([`docs/THEMING.md`](docs/THEMING.md)).
-- **Admin UI**: `/admin`, for an OAuth sign-in whose email is in
-  `ADMIN_EMAILS`.
+- **Admin UI & Login**: Access `/admin` or log in directly via `/admin/login`
+  with Passkey (Touch ID / Face ID) or Email 6-digit OTP verification code.
+  Emails must be authorized in `ADMIN_EMAILS`.
 - **Logs**: `wrangler tail`. Every request emits a JSON line with a
   request id. No PII (names, emails, comment bodies) is logged.
 - **Metrics** (optional; uncomment the `ANALYTICS` block in `wrangler.toml`): Workers Analytics Engine writes `comment.posted`,

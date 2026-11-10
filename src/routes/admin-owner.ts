@@ -39,11 +39,11 @@ const PAGE = `<!doctype html>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer">
 <meta name="robots" content="noindex">
-<title>Owner sign-in</title>
+<title>888echo Owner sign-in</title>
 <style>body{font:16px system-ui,sans-serif;max-width:28rem;margin:4rem auto;padding:0 1rem}button{font:inherit;padding:.6rem 1.2rem;cursor:pointer}</style>
 </head><body>
-<h1>Owner sign-in</h1>
-<p id="msg">Sign in to the Garrul admin area as the owner.</p>
+<h1>888echo Owner sign-in</h1>
+<p id="msg">Sign in to the 888echo admin area as the owner.</p>
 <button id="go" type="button" hidden>Sign in as owner</button>
 <script src="/admin/owner/app.js"></script>
 </body></html>`;

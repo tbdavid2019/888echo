@@ -25,7 +25,7 @@ describe("Admin Login & Passkeys Routes", () => {
 		const pageRes = await request("/admin/login", { headers: { cookie: "" } });
 		expect(pageRes.status).toBe(200);
 		const html = await pageRes.text();
-		expect(html).toContain("Garrul 管理員登入");
+		expect(html).toContain("888echo 管理員登入");
 		expect(html).toContain("btn-passkey");
 		expect(html).toContain("email-input");
 

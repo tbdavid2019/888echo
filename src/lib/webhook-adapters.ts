@@ -270,7 +270,7 @@ export const renderDiscordBody = async (
 		...(ctx.page_url ? { url: ctx.page_url } : {}),
 		description: `> ${sanitizeDiscordDescription(ctx.snippet)}`,
 		color: EVENT_COLOR[payload.event],
-		footer: { text: "Garrul" },
+		footer: { text: "888echo" },
 		timestamp: new Date(payload.ts).toISOString(),
 	};
 	if (links.length > 0) {

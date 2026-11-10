@@ -1,8 +1,8 @@
 {
-  "name": "garrul",
+  "name": "888echo",
   "version": "2.41.0",
   "private": true,
-  "description": "Self-hosted comment system on Cloudflare Workers + D1 + KV",
+  "description": "888echo — Sovereign edge comment & discussion engine on Cloudflare Workers + D1 + KV",
   "license": "Apache-2.0",
   "repository": {
     "type": "git",

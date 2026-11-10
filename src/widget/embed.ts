@@ -3315,7 +3315,8 @@ const SCRIPT_ORIGIN: string | null = (() => {
 })();
 
 const init = () => {
-	const host = document.getElementById("garrul");
+	const host =
+		document.getElementById("888echo") ?? document.getElementById("garrul");
 	if (!host) return;
 
 	const slug = host.dataset.slug;
@@ -3324,7 +3325,7 @@ const init = () => {
 		// one-line error message marooned in 220px of reserved space is a worse
 		// diagnostic than the message on its own.
 		releaseSpace(host);
-		host.textContent = "[garrul] missing data-slug";
+		host.textContent = "[888echo] missing data-slug";
 		return;
 	}
 
@@ -3386,7 +3387,8 @@ let reservedHeight = false;
 const reserveSpace = () => {
 	// Absent when the <script> sits above the mount element. Nothing to reserve
 	// yet, and init() will find it on DOMContentLoaded either way.
-	const host = document.getElementById("garrul");
+	const host =
+		document.getElementById("888echo") ?? document.getElementById("garrul");
 	if (!host) return;
 	// A lone reactions bar is one row, not three skeleton comments; reserving
 	// 220px would shift the page the other way when it lands.
@@ -4279,11 +4281,11 @@ const loadOnce = async (
 	if (!brandingHidden) {
 		const attr = el("p", "gr-attribution");
 		const link = document.createElement("a");
-		link.href = "https://garrul.com";
+		link.href = "https://github.com/tbdavid2019/Garrul";
 		link.target = "_blank";
 		link.rel = "noopener noreferrer";
 		// The product name is never translated; only the sentence around it is.
-		link.textContent = "Garrul";
+		link.textContent = "888echo";
 		const [beforeLink, afterLink] = sAround("w.powered_by", "link");
 		attr.append(beforeLink, link, afterLink);
 		wrap.appendChild(attr);

@@ -34,7 +34,7 @@ const LOGIN_HTML = `<!doctype html>
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="referrer" content="no-referrer">
   <meta name="robots" content="noindex">
-  <title>Garrul 管理員登入 — Passkey &amp; 2FA 無密碼安全登入</title>
+  <title>888echo 管理員登入 — Passkey &amp; 2FA 無密碼安全登入</title>
   <style>
     :root {
       --bg: #090d16;
@@ -205,7 +205,7 @@ const LOGIN_HTML = `<!doctype html>
       <div class="logo">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
       </div>
-      <h1>Garrul 管理員登入</h1>
+      <h1>888echo 管理員登入</h1>
       <p>支援 Passkey 生物辨識與 Email 2FA 無密碼安全登入</p>
     </div>
 
@@ -488,7 +488,7 @@ adminLogin.post("/api/login/email-code/send", async (c) => {
 <html>
 <body style="font-family:system-ui,sans-serif;max-width:480px;margin:auto;padding:24px;color:#0f172a;line-height:1.6;">
   <div style="text-align:center;margin-bottom:20px;">
-    <h2 style="font-size:20px;font-weight:700;margin:0 0 8px;">Garrul 管理員登入驗證碼</h2>
+    <h2 style="font-size:20px;font-weight:700;margin:0 0 8px;">888echo 管理員登入驗證碼</h2>
     <p style="color:#64748b;font-size:14px;margin:0;">請使用下方驗證碼登入管理後台</p>
   </div>
   <div style="background:#f1f5f9;border-radius:12px;padding:24px;text-align:center;margin:20px 0;">
@@ -501,9 +501,9 @@ adminLogin.post("/api/login/email-code/send", async (c) => {
 </html>`;
 
 	const sent = await sendEmail(c.env, {
-		from: (c.env.EMAIL_FROM as string) || "Garrul <notifications@garrul.com>",
+		from: (c.env.EMAIL_FROM as string) || "888echo <notifications@garrul.com>",
 		to: email,
-		subject: `【Garrul 登入驗證碼】${code}`,
+		subject: `【888echo 登入驗證碼】${code}`,
 		html,
 	});
 

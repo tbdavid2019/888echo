@@ -166,11 +166,12 @@ const buildHeaders = async (
 ): Promise<HeadersInit> => {
 	const headers: Record<string, string> = {
 		"content-type": "application/json",
-		"user-agent": "Garrul-Webhook/2.0",
+		"user-agent": "888echo-Webhook/2.0",
 	};
 	if (endpoint.secret) {
 		const sig = await signWebhookBody(endpoint.secret, body);
 		headers["x-garrul-signature"] = sig.header;
+		headers["x-888echo-signature"] = sig.header;
 	}
 	return headers;
 };

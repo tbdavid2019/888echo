@@ -148,7 +148,7 @@ const PASSKEYS_JS = `(function () {
           var cred = await navigator.credentials.create({
             publicKey: {
               challenge: b64ToBytes(chData.challenge),
-              rp: { name: "Garrul Admin", id: window.location.hostname },
+              rp: { name: "888echo Admin", id: window.location.hostname },
               user: {
                 id: new TextEncoder().encode(chData.userId),
                 name: chData.userName || "Admin",

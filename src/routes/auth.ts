@@ -261,7 +261,7 @@ const finishHtml = (
 	// two in step if either moves.
 	if (!return_origin) {
 		return `<!doctype html>
-<html><head><meta charset="utf-8"><title>Garrul</title></head>
+<html><head><meta charset="utf-8"><title>888echo</title></head>
 <body>
 <p>${text}</p>
 ${ok ? "<script>setTimeout(function(){ window.close(); }, 250);</script>\n" : ""}</body></html>`;
@@ -280,7 +280,7 @@ ${ok ? "<script>setTimeout(function(){ window.close(); }, 250);</script>\n" : ""
 	});
 	const targetOrigin = JSON.stringify(return_origin);
 	return `<!doctype html>
-<html><head><meta charset="utf-8"><title>Garrul</title></head>
+<html><head><meta charset="utf-8"><title>888echo</title></head>
 <body>
 <p>${text}</p>
 <script>

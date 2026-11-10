@@ -685,7 +685,7 @@ describe("POST /telegram/webhook — command readouts and edge replies", () => {
 		await say("/user 01HNOPE");
 		expect(lastReply()).toBe("No such user.");
 		await say("/frobnicate");
-		expect(lastReply()).toContain("<b>Garrul operator bot</b>");
+		expect(lastReply()).toContain("<b>888echo operator bot</b>");
 		const before = tgCalls.length;
 		await say("hello bot");
 		await say("/start");
