@@ -49,10 +49,13 @@ import {
 	countAdmins,
 	countModeratorNotesByTarget,
 	countOpenReportsByComment,
+	countPostsForSite,
 	createWebhookEndpoint,
+	createSite,
 	deleteSettings,
 	deleteTelegramLinkByUser,
 	deleteWebhookEndpoint,
+	deleteSite,
 	enqueueNotificationsForPost,
 	exportUserData,
 	getComment,
@@ -62,6 +65,8 @@ import {
 	getUsersByIds,
 	getModeratorNote,
 	getSavedReply,
+	getSiteById,
+	getSiteByDomain,
 	getWebhookEndpoint,
 	insertComment,
 	insertModeratorNote,
@@ -73,6 +78,8 @@ import {
 	deleteModeratorNote,
 	listModeratorNotes,
 	listSavedRepliesForUser,
+	listSites,
+	listSitesWithStats,
 	listWebhookEndpoints,
 	markSubscriptionUnsubscribed,
 	setPostClosed,
@@ -81,6 +88,7 @@ import {
 	setUserRole,
 	updateSavedReply,
 	deleteSavedReply,
+	updateSite,
 	updateWebhookEndpoint,
 	upsertPost,
 	type AdminAction,
@@ -88,6 +96,9 @@ import {
 	type CommentStatus,
 	type ModeratorNoteTarget,
 	type SavedReplyScope,
+	type Site,
+	type SiteInput,
+	type SitePatch,
 	type User,
 	type UserRole,
 	type WebhookAdapter,
@@ -138,6 +149,8 @@ import { renderUsers } from "../admin-ui/pages/users";
 import { renderOperator } from "../admin-ui/pages/operator";
 import { renderTelegram } from "../admin-ui/pages/telegram";
 import { issueTelegramLinkToken } from "./telegram";
+import { renderSitesPage } from "../admin-ui/pages/sites";
+import { clearSitesCache, getCachedSites, getCachedSitesSync } from "../lib/sites";
 import { renderSettings } from "../admin-ui/pages/settings";
 import { ownerLogin } from "./admin-owner";
 import { adminLogin } from "./admin-login";
@@ -212,9 +225,13 @@ import { log } from "../lib/log";
 import { fillSubject, subjectTitle } from "../lib/post-title";
 import { FALLBACK_LOCALE, tFor } from "../i18n";
 
-const admin = new Hono<{ Bindings: Bindings }>();
+type AdminVariables = {
+	sites?: Site[];
+};
 
-type Ctx = Context<{ Bindings: Bindings }>;
+const admin = new Hono<{ Bindings: Bindings; Variables: AdminVariables }>();
+
+type Ctx = Context<{ Bindings: Bindings; Variables: AdminVariables }>;
 
 const wantsHtml = (c: Ctx): boolean => {
 	const accept = c.req.header("accept") ?? "";
@@ -239,6 +256,22 @@ export const getAdminLocale = (c: Ctx): "zh-Hant" | "en" => {
 	return "en";
 };
 
+export const getActiveSiteId = (c: Ctx): string | null => {
+	const querySite = c.req.query("site_id");
+	if (querySite !== undefined) {
+		return querySite.trim() || null;
+	}
+	const cookieHeader = c.req.header("cookie");
+	if (!cookieHeader) return null;
+	const match = cookieHeader.match(/(?:^|;\s*)888echo_active_site=([^;]+)/);
+	if (!match || !match[1]) return null;
+	try {
+		return decodeURIComponent(match[1]).trim() || null;
+	} catch {
+		return null;
+	}
+};
+
 // derive — currently only the page's own keyboard shortcuts. The derived
 // opts are spread last so a caller can't accidentally override them.
 const renderPage = (
@@ -248,13 +281,18 @@ const renderPage = (
 	user: User,
 	updateInfo: UpdateInfo | null,
 	opts: Omit<LayoutOpts, "usage_link" | "activePath" | "locale"> = {},
-): string =>
-	layout(title, body, user, updateInfo, {
+): string => {
+	const sites = (c.get("sites") as Site[] | undefined) ?? getCachedSitesSync(c.env.DB);
+	const activeSiteId = getActiveSiteId(c);
+	return layout(title, body, user, updateInfo, {
 		...opts,
 		locale: getAdminLocale(c),
 		usage_link: isUsageConfigured(c.env),
 		activePath: c.req.path,
+		sites,
+		activeSiteId,
 	});
+};
 
 // Gate the admin-area pages and APIs. `level: "admin"` is the historical
 // behavior — only users with role='admin' (equivalently is_admin=1) pass.
@@ -331,6 +369,10 @@ admin.use("*", async (c, next) => {
 			return c.json({ error: "origin_mismatch" }, 403);
 		}
 	}
+	if (c.env?.DB) {
+		const sites = await getCachedSites(c.env.DB).catch(() => []);
+		c.set("sites", sites);
+	}
 	await next();
 });
 
@@ -364,6 +406,49 @@ admin.get("/set-lang", (c) => {
 	return c.redirect(safeReturn, 302);
 });
 
+// Admin active site switcher route: sets 888echo_active_site cookie & redirects back
+admin.all("/set-site", async (c) => {
+	let siteId = (c.req.query("site_id") ?? "").trim();
+	let returnTo = c.req.query("return_to") || "/admin";
+	if (c.req.method === "POST") {
+		const isJson = c.req.header("content-type")?.includes("application/json");
+		const form: Record<string, unknown> = isJson
+			? await c.req.json().catch(() => ({}))
+			: await c.req.parseBody().catch(() => ({}));
+		if (form.site_id !== undefined) siteId = String(form.site_id).trim();
+		if (form.return_to !== undefined) returnTo = String(form.return_to).trim();
+	}
+	const safeReturn = returnTo.startsWith("/admin") ? returnTo : "/admin";
+	if (siteId) {
+		c.header(
+			"Set-Cookie",
+			`888echo_active_site=${encodeURIComponent(siteId)}; Path=/admin; Max-Age=31536000; SameSite=Lax; HttpOnly`,
+		);
+	} else {
+		c.header(
+			"Set-Cookie",
+			`888echo_active_site=; Path=/admin; Max-Age=0; SameSite=Lax; HttpOnly`,
+		);
+	}
+	return c.redirect(safeReturn, 302);
+});
+
+// Sites management page (Multi-Site Architecture)
+admin.get("/sites", async (c) => {
+	const user = await requireAdmin(c);
+	if (user instanceof Response) return user;
+	const [updateInfo, sitesWithStats] = await Promise.all([
+		peekCachedLatestVersion(c.env),
+		listSitesWithStats(c.env.DB),
+	]);
+	const isZh = getAdminLocale(c) === "zh-Hant";
+	const body = renderSitesPage({
+		sites: sitesWithStats,
+		isZh,
+	});
+	return c.html(renderPage(c, isZh ? "站台管理" : "Sites", body, user, updateInfo));
+});
+
 // The dashboard's seven aggregates, per D1 binding, for DASHBOARD_MEMO_MS.
 // Several still count whole tables (totals, per-host breakdown), so a refresh
 // loop would otherwise re-read every comment each time. Counts lag a
@@ -371,19 +456,28 @@ admin.get("/set-lang", (c) => {
 const DASHBOARD_MEMO_MS = 60_000;
 const dashboardMemo = new WeakMap<
 	D1Database,
-	{ at: number; data: Promise<DashboardData> }
+	Map<string, { at: number; data: Promise<DashboardData> }>
 >();
 type DashboardData = Parameters<typeof renderDashboard>[0];
 
-const loadDashboardData = (db: D1Database): Promise<DashboardData> => {
+const loadDashboardData = (
+	db: D1Database,
+	siteId?: string | null,
+): Promise<DashboardData> => {
 	const now = Date.now();
-	const hit = dashboardMemo.get(db);
+	let siteMap = dashboardMemo.get(db);
+	if (!siteMap) {
+		siteMap = new Map();
+		dashboardMemo.set(db, siteMap);
+	}
+	const key = siteId ?? "all";
+	const hit = siteMap.get(key);
 	if (hit && now - hit.at < DASHBOARD_MEMO_MS) return hit.data;
 	const data = Promise.all([
-		adminStats(db),
-		adminTimeline(db, 30),
-		adminTopPosts(db, 30, 5),
-		adminTopCommenters(db, 30, 5),
+		adminStats(db, siteId),
+		adminTimeline(db, 30, siteId),
+		adminTopPosts(db, 30, 5, siteId),
+		adminTopCommenters(db, 30, 5, siteId),
 		adminOldestPending(db),
 		adminSpamRate(db, 30),
 		adminCommentsByHost(db),
@@ -400,17 +494,20 @@ const loadDashboardData = (db: D1Database): Promise<DashboardData> => {
 	);
 	// A failed read must not stay memoized, nor evict a newer entry.
 	data.catch(() => {
-		if (dashboardMemo.get(db)?.data === data) dashboardMemo.delete(db);
+		if (dashboardMemo.get(db)?.get(key)?.data === data) {
+			dashboardMemo.get(db)?.delete(key);
+		}
 	});
-	dashboardMemo.set(db, { at: now, data });
+	siteMap.set(key, { at: now, data });
 	return data;
 };
 
 admin.get("/", async (c) => {
 	const user = await requireMod(c);
 	if (user instanceof Response) return user;
+	const activeSiteId = getActiveSiteId(c);
 	const [data, updateInfo, { flags, numbers }] = await Promise.all([
-		loadDashboardData(c.env.DB),
+		loadDashboardData(c.env.DB, activeSiteId),
 		peekCachedLatestVersion(c.env),
 		// The anti-spam summary line reports the resolved heuristic dials, so it
 		// has to read them the same way evaluateSpam does.
@@ -487,6 +584,8 @@ admin.get("/queue", async (c) => {
 	const filter: import("../db/queries").AdminCommentFilter = {
 		status: reported ? "all" : status,
 	};
+	const activeSiteId = getActiveSiteId(c);
+	if (activeSiteId) filter.site_id = activeSiteId;
 	if (q) filter.q = q;
 	if (postSlug) filter.post_slug = postSlug;
 	if (userId) filter.user_id = userId;
@@ -1477,6 +1576,96 @@ admin.delete("/api/webhooks/:id", async (c) => {
 		meta: { url: existing.url, adapter: existing.adapter },
 	});
 	return c.json({ ok: true, id });
+});
+
+// -------------------------- Sites Management API ----------------------------
+
+admin.get("/api/sites", async (c) => {
+	const user = await requireAdmin(c);
+	if (user instanceof Response) return user;
+	const sites = await listSitesWithStats(c.env.DB);
+	return c.json({ ok: true, sites });
+});
+
+admin.post("/api/sites", async (c) => {
+	const user = await requireAdmin(c);
+	if (user instanceof Response) return user;
+	const body = await c.req.json<SiteInput>().catch(() => null);
+	if (!body || !body.domain || !body.name) {
+		return c.json({ error: "invalid_body", message: "Domain and name are required" }, 400);
+	}
+	const existing = await getSiteByDomain(c.env.DB, body.domain);
+	if (existing) {
+		return c.json({ error: "domain_conflict", message: "Domain already registered" }, 409);
+	}
+	let created: Site;
+	try {
+		created = await createSite(c.env.DB, body);
+	} catch (err) {
+		return c.json({ error: "create_failed", message: String(err) }, 400);
+	}
+	clearSitesCache(c.env.DB);
+	await adminInsertAudit(c.env.DB, {
+		admin_id: user.id,
+		action: "site.create",
+		target_kind: "site",
+		target_id: created.id,
+		meta: { domain: created.domain, name: created.name },
+	});
+	return c.json({ ok: true, site: created }, 201);
+});
+
+admin.patch("/api/sites/:id", async (c) => {
+	const user = await requireAdmin(c);
+	if (user instanceof Response) return user;
+	const id = c.req.param("id");
+	const existing = await getSiteById(c.env.DB, id);
+	if (!existing) return c.json({ error: "not_found" }, 404);
+
+	const body = await c.req.json<SitePatch>().catch(() => null);
+	if (!body) return c.json({ error: "invalid_body" }, 400);
+
+	if (body.domain) {
+		const conflict = await getSiteByDomain(c.env.DB, body.domain);
+		if (conflict && conflict.id !== id) {
+			return c.json({ error: "domain_conflict", message: "Domain already registered" }, 409);
+		}
+	}
+
+	const updated = await updateSite(c.env.DB, id, body);
+	clearSitesCache(c.env.DB);
+	await adminInsertAudit(c.env.DB, {
+		admin_id: user.id,
+		action: "site.update",
+		target_kind: "site",
+		target_id: id,
+		meta: { domain: updated?.domain, name: updated?.name },
+	});
+	return c.json({ ok: true, site: updated });
+});
+
+admin.delete("/api/sites/:id", async (c) => {
+	const user = await requireAdmin(c);
+	if (user instanceof Response) return user;
+	const id = c.req.param("id");
+	const existing = await getSiteById(c.env.DB, id);
+	if (!existing) return c.json({ error: "not_found" }, 404);
+
+	const postCount = await countPostsForSite(c.env.DB, id);
+	if (postCount > 0) {
+		return c.json({ error: "site_not_empty", message: "Cannot delete site with active posts" }, 400);
+	}
+
+	await deleteSite(c.env.DB, id);
+	clearSitesCache(c.env.DB);
+	await adminInsertAudit(c.env.DB, {
+		admin_id: user.id,
+		action: "site.delete",
+		target_kind: "site",
+		target_id: id,
+		meta: { domain: existing.domain, name: existing.name },
+	});
+	return c.json({ ok: true });
 });
 
 // ---------------------------- Saved replies --------------------------------

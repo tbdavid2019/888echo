@@ -23,6 +23,7 @@ import { Hono } from "hono";
 import type { Bindings } from "../index";
 import { getComment, getPost } from "../db/queries";
 import { allowedPostUrl } from "../lib/cors";
+import { getCachedSites } from "../lib/sites";
 import {
 	cacheKey,
 	matchCache,
@@ -64,7 +65,9 @@ permalink.get("/:id", async (c) => {
 	// path. Rows written before the origin check existed, or after an operator
 	// drops a host from the allowlist, must not turn this route into an open
 	// redirect.
-	const safeUrl = allowedPostUrl(post.url, c.env.ALLOWED_ORIGINS);
+	const cachedSites = await getCachedSites(c.env.DB);
+	const siteDomains = cachedSites.map((s) => s.domain.toLowerCase());
+	const safeUrl = allowedPostUrl(post.url, c.env.ALLOWED_ORIGINS, siteDomains);
 	if (!safeUrl) return c.text("post URL invalid", 404);
 	const parsed = new URL(safeUrl);
 

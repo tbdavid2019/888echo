@@ -144,6 +144,17 @@ const matchesEventFilter = (
 	event: WebhookEvent,
 ): boolean => endpoint.events == null || endpoint.events.includes(event);
 
+const matchesSiteFilter = (
+	endpoint: WebhookEndpoint,
+	postSlug: string,
+): boolean => {
+	if (!endpoint.site_id) return true;
+	const siteId = postSlug.includes("::")
+		? postSlug.slice(0, postSlug.indexOf("::"))
+		: null;
+	return endpoint.site_id === siteId;
+};
+
 const buildSyntheticEnvEndpoint = (url: string): WebhookEndpoint => {
 	const now = Date.now();
 	return {
@@ -270,6 +281,7 @@ const dispatchToEndpoint = async (
 	payload: WebhookPayload,
 ): Promise<void> => {
 	if (!matchesEventFilter(endpoint, payload.event)) return;
+	if (!matchesSiteFilter(endpoint, payload.post_slug)) return;
 	const body = await renderBody(env.DB, endpoint.adapter, payload, {
 		baseUrl: env.PUBLIC_BASE_URL,
 		// Telegram stores its destination chat id in the endpoint url column.

@@ -23,11 +23,13 @@
 import { Hono } from "hono";
 import type { Bindings } from "../index";
 import {
+	composePostSlug,
 	countApprovedCommentsBySlugs,
 	countPageReactionsBySlugs,
 	countPageVotesBySlugs,
 	type PageVoteTally,
 } from "../db/queries";
+import { resolveRequestSite } from "../lib/sites";
 import { loadFlags } from "../lib/settings";
 import { cacheJson, cacheKey, matchCache, tryWaitUntil } from "../lib/response-cache";
 
@@ -71,6 +73,9 @@ counts.get("/", async (c) => {
 		return c.json({ counts: {} });
 	}
 
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const dbSlugs = site?.id ? slugs.map((s) => composePostSlug(site.id, s)) : slugs;
+
 	const include = parseInclude(c.req.query("include") ?? "");
 
 	// Resolve flags up front so the cache key reflects only the extras we
@@ -86,31 +91,34 @@ counts.get("/", async (c) => {
 		...(wantReactions ? ["reactions"] : []),
 	];
 	const keySuffix = effective.length ? `:${effective.join(",")}` : "";
+	const sitePrefix = site?.id ? `${site.id}:` : "";
 	const cacheReq = cacheKey(c.req.url, "counts", {
-		k: `${slugs.join(",")}${keySuffix}`,
+		k: `${sitePrefix}${slugs.join(",")}${keySuffix}`,
 	});
 
 	const hit = await matchCache(cacheReq);
 	if (hit) return hit;
 
-	const map = await countApprovedCommentsBySlugs(c.env.DB, slugs);
+	const unprefix = (s: string) => (s.includes("::") ? s.slice(s.indexOf("::") + 2) : s);
+
+	const map = await countApprovedCommentsBySlugs(c.env.DB, dbSlugs);
 	const result: Record<string, number> = {};
 	for (const [slug, count] of map) {
-		result[slug] = count;
+		result[unprefix(slug)] = count;
 	}
 	const payload: CountsPayload = { counts: result };
 
 	if (wantVotes) {
-		const tallies = await countPageVotesBySlugs(c.env.DB, slugs);
+		const tallies = await countPageVotesBySlugs(c.env.DB, dbSlugs);
 		const votes: Record<string, PageVoteTally> = {};
-		for (const [slug, tally] of tallies) votes[slug] = tally;
+		for (const [slug, tally] of tallies) votes[unprefix(slug)] = tally;
 		payload.votes = votes;
 	}
 
 	if (wantReactions) {
-		const totals = await countPageReactionsBySlugs(c.env.DB, slugs);
+		const totals = await countPageReactionsBySlugs(c.env.DB, dbSlugs);
 		const reactions: Record<string, Record<string, number>> = {};
-		for (const [slug, byKind] of totals) reactions[slug] = byKind;
+		for (const [slug, byKind] of totals) reactions[unprefix(slug)] = byKind;
 		payload.reactions = reactions;
 	}
 

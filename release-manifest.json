@@ -1,5 +1,5 @@
 {
-  "version": "2.40.0",
+  "version": "2.41.0",
   "minPreviousVersion": "1.0.0",
   "renderer": {
     "version": 3,
@@ -449,7 +449,9 @@
     "0031_admin_list_indexes.sql",
     "0032_page_engagement_totals.sql",
     "0033_pending_comment_submissions.sql",
-    "0034_pending_comment_locale.sql"
+    "0034_pending_comment_locale.sql",
+    "0035_admin_login_passkeys.sql",
+    "0036_multi_site_architecture.sql"
   ],
   "breakingChanges": [
     {

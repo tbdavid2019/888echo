@@ -38,6 +38,8 @@ const ICON_PATHS: Record<string, string> = {
 	telegram:
 		'<path d="M22 2 11 13"/><path d="M22 2 15 22l-4-9-9-4Z"/>',
 	chevron: '<polyline points="6 9 12 15 18 9"/>',
+	globe:
+		'<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
 };
 
 /**

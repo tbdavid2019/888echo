@@ -38,6 +38,7 @@ import {
 	isIpHashBarred,
 	isNameClaimed,
 	insertPendingCommentSubmission,
+	composePostSlug,
 	isUserRole,
 	listCommentsForThreads,
 	listReactionsForComments,
@@ -81,6 +82,7 @@ import {
 import { checkBlocklist, compileBlocklist } from "../lib/spam/blocklist";
 import { resolveThreadOpen } from "../lib/thread";
 import { bustTreeCache, TREE_CACHE_TTL, treeCacheKey } from "../lib/tree-cache";
+import { getCachedSites, resolveRequestSite } from "../lib/sites";
 import {
 	cacheJson,
 	jsonResponse,
@@ -237,9 +239,12 @@ const validName = (raw: string | undefined): { ok: true; name: string } | { ok: 
 const serializeComment = (c: Comment, author: User, avatarStyle?: string) => {
 	const isDeleted = c.status === "deleted";
 	const style = avatarStyle || "random";
+	const rawSlug = c.post_slug.includes("::")
+		? c.post_slug.slice(c.post_slug.indexOf("::") + 2)
+		: c.post_slug;
 	return {
 		id: c.id,
-		post_slug: c.post_slug,
+		post_slug: rawSlug,
 		parent_id: c.parent_id,
 		body_html: isDeleted ? "" : c.body_html,
 		status: c.status,
@@ -481,9 +486,12 @@ comments.post("/", async (c) => {
 		return c.json({ error: t("err.honeypot") }, 400);
 	}
 
-	const slug = (body.slug ?? "").trim();
-	if (!slug) return c.json({ error: t("err.post.required") }, 400);
-	if (!SLUG_RE.test(slug)) return c.json({ error: t("err.post.invalid") }, 400);
+	const rawSlug = (body.slug ?? "").trim();
+	if (!rawSlug) return c.json({ error: t("err.post.required") }, 400);
+	if (!SLUG_RE.test(rawSlug)) return c.json({ error: t("err.post.invalid") }, 400);
+
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const slug = composePostSlug(site?.id, rawSlug);
 
 	const bodyCheck = validateBody(body.body ?? "");
 	if (!bodyCheck.ok) {
@@ -520,6 +528,9 @@ comments.post("/", async (c) => {
 	// that address would inherit its role.
 	const asStaff = body.as_staff === true;
 	if (asStaff && !session) return c.json({ error: t("err.staff.forbidden") }, 403);
+	if (!session && site && site.allow_anonymous === false) {
+		return c.json({ error: "Authentication required" }, 401);
+	}
 
 	// Anonymous path: name + Turnstile required on top of the rate limit.
 	let author: User;
@@ -716,7 +727,9 @@ comments.post("/", async (c) => {
 	// else null. Anything else (`javascript:`, `data:`, scheme-relative, an
 	// unrelated host) is dropped so the permalink redirect cannot be used as
 	// an open-redirect gadget. See allowedPostUrl for the reasoning.
-	const postUrl = allowedPostUrl(body.post_url, c.env.ALLOWED_ORIGINS);
+	const cachedSites = await getCachedSites(c.env.DB);
+	const siteDomains = cachedSites.map((s) => s.domain.toLowerCase());
+	const postUrl = allowedPostUrl(body.post_url, c.env.ALLOWED_ORIGINS, siteDomains);
 	// Thread acceptance gate. The global comments_enabled switch was checked at
 	// the top; this also enforces the per-post manual close and the lazy
 	// auto-close rules (sunset date / age). It runs before the parent lookup and
@@ -728,11 +741,14 @@ comments.post("/", async (c) => {
 	// effect (e.g. persist a bogus published_at to poison the close-anchor and
 	// then 403). A post with no row yet is open unless a global/sunset rule says
 	// otherwise, so synthesize a default-open post for the resolver in that case.
-	const existing = await getPost(c.env.DB, slug);
+	const existing = await getPost(c.env.DB, slug, site?.id);
+	const effectiveNumbers = site?.auto_close_days && site.auto_close_days > 0
+		? { ...numbers, auto_close_days: site.auto_close_days }
+		: numbers;
 	const threadState = resolveThreadOpen(
 		existing ?? { closed: false, published_at: null, created_at: Date.now() },
 		flags,
-		numbers,
+		effectiveNumbers,
 		Date.now(),
 	);
 	if (!threadState.open) {
@@ -790,6 +806,8 @@ comments.post("/", async (c) => {
 		sanitizePostTitle(body.post_title),
 		postUrl,
 		parsePublishedAt(body.post_published),
+		site?.id,
+		rawSlug,
 	);
 
 	const userAgent = c.req.header("user-agent") ?? null;
@@ -1075,6 +1093,7 @@ comments.get("/confirm/:token", async (c) => {
 	const t = tFor(locale);
 	const post = await getPost(c.env.DB, candidate.post_slug);
 	const title = post?.title ?? candidate.post_slug;
+	const siteDomains = await getCachedSites(c.env.DB).then((s) => s.map((x) => x.domain.toLowerCase()));
 	return commentConfirmationPage(c, {
 		locale,
 		heading: t("ui.comment.confirm_prompt", { title }),
@@ -1082,7 +1101,7 @@ comments.get("/confirm/:token", async (c) => {
 		commentBody: candidate.body_md,
 		formAction: new URL(c.req.url).pathname,
 		confirmText: t("ui.comment.confirm_cta"),
-		returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS),
+		returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS, siteDomains),
 		returnText: t("ui.comment.return_to_post"),
 	});
 });
@@ -1103,6 +1122,7 @@ comments.post("/confirm/:token", async (c) => {
 	const t = tFor(locale);
 	const settings = await loadSettings(c.env);
 	const post = await getPost(c.env.DB, candidate.post_slug);
+	const siteDomains = await getCachedSites(c.env.DB).then((s) => s.map((x) => x.domain.toLowerCase()));
 	const threadState = post
 		? resolveThreadOpen(post, settings.flags, settings.numbers, Date.now())
 		: { open: false as const };
@@ -1111,7 +1131,7 @@ comments.post("/confirm/:token", async (c) => {
 		return commentConfirmationPage(c, {
 			locale,
 			heading: t("ui.comment.thread_closed"),
-			returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS),
+			returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS, siteDomains),
 			returnText: t("ui.comment.return_to_post"),
 		});
 	}
@@ -1128,7 +1148,7 @@ comments.post("/confirm/:token", async (c) => {
 			return commentConfirmationPage(c, {
 				locale,
 				heading: t("ui.comment.parent_unavailable"),
-				returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS),
+				returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS, siteDomains),
 				returnText: t("ui.comment.return_to_post"),
 			});
 		}
@@ -1206,7 +1226,7 @@ comments.post("/confirm/:token", async (c) => {
 				? "ui.comment.confirmed_page"
 				: "ui.comment.confirmed_moderation",
 		),
-		returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS),
+		returnUrl: allowedPostUrl(post?.url, c.env.ALLOWED_ORIGINS, siteDomains),
 		returnText: t("ui.comment.return_to_post"),
 	});
 });
@@ -1446,7 +1466,8 @@ export const buildTreePage = async (
 		 * verbatim and never looks inside — it can discover an entry is corrupt.
 		 * This is how it treats that as a miss rather than 500ing the mount.
 		 */
-		skipCache?: boolean;
+		skipCache?: boolean | undefined;
+		siteAutoCloseDays?: number | undefined;
 	},
 ): Promise<TreePageResult> => {
 	const { slug, sort, beforeRaw, session, flags, numbers } = opts;
@@ -1613,14 +1634,17 @@ export const buildTreePage = async (
 	// global/sunset rule says otherwise, so synthesize a default-open post for
 	// the resolver in that case. Anonymous viewers may see this lag a sunset/age
 	// flip by up to the tree-cache TTL — acceptable (the POST gate is exact).
+	const effectiveNumbers = opts.siteAutoCloseDays && opts.siteAutoCloseDays > 0
+		? { ...numbers, auto_close_days: opts.siteAutoCloseDays }
+		: numbers;
 	const threadState = resolveThreadOpen(
 		post ?? { closed: false, published_at: null, created_at: Date.now() },
 		flags,
-		numbers,
+		effectiveNumbers,
 		Date.now(),
 	);
 	const payload: ListPayload = {
-		post,
+		post: post ? { ...post, slug: post.raw_slug ?? post.slug } : null,
 		threads: page,
 		next_cursor,
 		sort,
@@ -1642,9 +1666,12 @@ export const buildTreePage = async (
 
 comments.get("/", async (c) => {
 	const t = c.get("t") ?? tFor(FALLBACK_LOCALE);
-	const slug = (c.req.query("slug") ?? "").trim();
-	if (!slug) return c.json({ error: t("err.post.required") }, 400);
-	if (!SLUG_RE.test(slug)) return c.json({ error: t("err.post.invalid") }, 400);
+	const rawSlug = (c.req.query("slug") ?? "").trim();
+	if (!rawSlug) return c.json({ error: t("err.post.required") }, 400);
+	if (!SLUG_RE.test(rawSlug)) return c.json({ error: t("err.post.invalid") }, 400);
+
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const slug = composePostSlug(site?.id, rawSlug);
 
 	const session = await readSession(c);
 	// One read rather than three per-group ones: this route needs flags, numbers
@@ -1663,6 +1690,7 @@ comments.get("/", async (c) => {
 		session,
 		flags,
 		numbers,
+		siteAutoCloseDays: site?.auto_close_days,
 	});
 	// Re-emit an edge hit WITHOUT its public Cache-Control — see buildTreePage.
 	if ("cached" in built) return jsonResponse(built.cached);

@@ -167,7 +167,11 @@ const metaCell = (c: AdminComment): string => {
 		.toISOString()
 		.slice(0, 16)
 		.replace("T", " ");
+	const siteBadge = c.site_name
+		? `<div style="margin-bottom:4px;"><span class="badge" style="background:var(--accent-subtle);color:var(--accent);font-size:11px;padding:1px 6px;border-radius:4px;">${escapeHtml(c.site_name)}</span></div>`
+		: "";
 	const where = `
+    ${siteBadge}
     <div><code>${escapeHtml(c.host)}</code></div>
     <div><code>${escapeHtml(c.post_slug)}</code></div>`;
 	const whereLinked = isHttpUrl(c.post_url)

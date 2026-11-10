@@ -61,12 +61,14 @@
 import { Hono } from "hono";
 import type { Bindings } from "../index";
 import {
+	composePostSlug,
 	getPageVote,
 	getSubscriptionForEmailAndSlug,
 	getUser,
 	listPageReactions,
 	listUserPageReactions,
 } from "../db/queries";
+import { resolveRequestSite } from "../lib/sites";
 import { isActiveUser } from "../lib/active-user";
 import { readSession } from "../lib/session";
 import { loadSettings, type ResolvedFlags } from "../lib/settings";
@@ -126,9 +128,12 @@ bootstrap.get("/", async (c) => {
 	// Shadows the module-level English `t` for the whole handler, so an error
 	// body matches the language the rest of the widget is in.
 	const t = c.get("t") ?? tFor(FALLBACK_LOCALE);
-	const slug = (c.req.query("slug") ?? "").trim();
-	if (!slug) return c.json({ error: t("err.post.required") }, 400);
-	if (!SLUG_RE.test(slug)) return c.json({ error: t("err.post.invalid") }, 400);
+	const rawSlug = (c.req.query("slug") ?? "").trim();
+	if (!rawSlug) return c.json({ error: t("err.post.required") }, 400);
+	if (!SLUG_RE.test(rawSlug)) return c.json({ error: t("err.post.invalid") }, 400);
+
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const slug = composePostSlug(site?.id, rawSlug);
 
 	const view = c.req.query("view");
 	if (view !== undefined && view !== "engagement")
@@ -168,10 +173,11 @@ bootstrap.get("/", async (c) => {
 	// Full locale negotiation, including the operator's default_locale — the
 	// same call `/config` makes, so the widget learns its language here and
 	// echoes it back as `?lang=` on every later request.
+	const defaultLocale = site?.default_locale || resolved.strings.default_locale;
 	const locale = resolveConfigLocale(
 		c.req.query("lang"),
 		c.req.query("hl"),
-		resolved.strings.default_locale,
+		defaultLocale,
 	);
 
 	// One row serving both the `user` section and the subscription gate below;
@@ -200,6 +206,7 @@ bootstrap.get("/", async (c) => {
 		session,
 		flags,
 		numbers,
+		siteAutoCloseDays: site?.auto_close_days,
 	};
 	let tree = await buildTreePage(c.env, c.req.url, treeOpts);
 	// A hit is the exact body `/comments` would have served. Reviving it into the

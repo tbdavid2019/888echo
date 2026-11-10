@@ -50,6 +50,21 @@ All notable changes to the **888echo** sovereign edge comment & discussion engin
   - Completed all 37 previously missing server strings in `src/i18n/zh-Hant.ts` (API validation errors, rate limit warnings, Turnstile hints, Telegram bot operator interactions).
   - Both server (`84/84`) and widget (`120/120`) tables for `zh-Hant` now achieve full 100% translation coverage.
 
+### 🌐 System-Level Multi-Site & Multi-Domain Architecture (多 Domain 站台架構)
+- **First-Class Site Management Entity (`/admin/sites`)**:
+  - Introduced `sites` table (`0036_multi_site_architecture.sql`) with full administrative CRUD API (`/admin/api/sites`).
+  - Supports custom domain binding, display names, default locale (`zh-Hant`, `en`, etc.), anonymous commenting policy toggle, and auto-close discussion windows per site.
+- **Dynamic CORS & Origin Authorization**:
+  - Registered site domains are dynamically synchronized into CORS preflight and Origin security gates without requiring edits to `ALLOWED_ORIGINS` in `wrangler.toml` or Worker redeployment.
+- **Cross-Domain Thread & Slug Isolation**:
+  - Automatically isolates post threads across domains (`${site_id}::${raw_slug}`), preventing slug collisions between different websites (e.g. `news2.david888.com/welcome` vs `blog.david888.com/welcome`).
+  - Completely transparent to frontend embeds: API JSON responses strip internal prefixes so client widgets receive clean user-facing slugs.
+  - Seamlessly adopts legacy posts when accessed under a registered domain without data loss.
+- **Admin UI Global Site Switcher**:
+  - Added persistent Site Switcher dropdown in the admin sidebar, allowing operators to switch between "All Sites" and specific registered domains with instant Dashboard metrics and Queue filtering.
+- **Site-Scoped Webhooks & Alert Routing**:
+  - Outbound webhooks (Discord, Slack, generic) can be bound to specific sites or remain global, ensuring notifications reach the right team channels.
+
 ### 🔌 Seamless Embed Backward Compatibility
 - **Dual Container Target Support**:
   - `embed.js` now natively checks `document.getElementById("888echo") ?? document.getElementById("garrul")`.

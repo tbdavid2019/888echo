@@ -122,6 +122,8 @@ export type LayoutOpts = {
 	 */
 	shortcuts?: ReadonlyArray<readonly [string, string]>;
 	locale?: AdminLocale;
+	sites?: Array<{ id: string; domain: string; name: string }>;
+	activeSiteId?: string | null;
 };
 
 // `j / k` renders as two <kbd>s, `Esc` as one: split on the separator the
@@ -155,6 +157,7 @@ export const layout = (
 	// CF_API_TOKEN + CF_ACCOUNT_ID are configured (see opts.usage_link).
 	const manageLinks: NavLink[] = isAdmin
 		? [
+				{ href: "/admin/sites", label: isZh ? "站台管理" : "Sites", icon: "globe" },
 				{ href: "/admin/users", label: isZh ? "使用者" : "Users", icon: "users" },
 				{
 					href: "/admin/subscriptions",
@@ -200,6 +203,22 @@ export const layout = (
 	const navHtml = navSections
 		.map((s) => renderNavSection(s, opts.activePath))
 		.join("\n");
+	const siteSwitcherHtml =
+		opts.sites && opts.sites.length > 0
+			? `<div class="site-switcher" style="padding:0 0.8rem 0.6rem;">
+  <select style="width:100%;padding:0.4rem 0.6rem;font-size:0.85rem;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:var(--radius-sm);outline:none;cursor:pointer;"
+          aria-label="${isZh ? "選擇目前站台" : "Select site"}"
+          onchange="window.location.href='/admin/set-site?site_id=' + encodeURIComponent(this.value) + '&return_to=' + encodeURIComponent(window.location.pathname + window.location.search)">
+    <option value="" ${!opts.activeSiteId ? "selected" : ""}>🌐 ${isZh ? "全部站台 (All Sites)" : "All Sites"}</option>
+    ${opts.sites
+			.map(
+				(s) =>
+					`<option value="${escapeHtml(s.id)}" ${opts.activeSiteId === s.id ? "selected" : ""}>${escapeHtml(s.name)} (${escapeHtml(s.domain)})</option>`,
+			)
+			.join("")}
+  </select>
+</div>`
+			: "";
 	const pageShortcuts = opts.shortcuts?.length
 		? `<h4>${isZh ? "本頁快捷鍵" : "This page"}</h4>
   <dl>
@@ -262,6 +281,7 @@ ${renderUpdateBanner(updateInfo)}
   <div class="scrim" x-show="navOpen" x-cloak @click="navOpen = false"></div>
   <aside class="sidebar" :class="navOpen && 'open'">
     <a href="/admin" class="brand" @click="navOpen = false">${icon("queue", 22)}<span>888echo</span></a>
+    ${siteSwitcherHtml}
     <nav class="sidebar-nav">
 ${navHtml}
     </nav>

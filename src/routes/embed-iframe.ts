@@ -62,6 +62,7 @@ import { type Context, Hono } from "hono";
 import { LOCALES } from "../i18n";
 import type { Bindings } from "../index";
 import { frameConfig, safeApiOrigin } from "../widget/frame-config";
+import { getCachedSitesSync } from "../lib/sites";
 
 const iframe = new Hono<{ Bindings: Bindings }>();
 
@@ -94,6 +95,11 @@ const allowedOriginSet = (env: Bindings): Set<string> => {
 const frameableOrigins = (env: Bindings, selfOrigin: string): Set<string> => {
 	const set = allowedOriginSet(env);
 	set.add(selfOrigin);
+	const sites = getCachedSitesSync(env.DB);
+	for (const s of sites) {
+		set.add(`https://${s.domain.toLowerCase()}`);
+		set.add(`http://${s.domain.toLowerCase()}`);
+	}
 	return set;
 };
 

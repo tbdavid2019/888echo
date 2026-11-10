@@ -5,13 +5,15 @@ import type { User } from "../src/db/queries";
 
 const makeUser = (role: "admin" | "mod"): User => ({
 	id: "01USER000000000000000000001",
+	provider: "github",
+	provider_id: "1",
 	email: "admin@example.com",
 	name: "Admin User",
 	avatar_url: null,
 	role,
 	is_admin: role === "admin",
 	is_banned: false,
-	is_shadowbanned: false,
+	erased_at: null,
 	created_at: 1700000000,
 });
 

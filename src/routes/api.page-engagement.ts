@@ -18,6 +18,7 @@ import { Hono } from "hono";
 import type { Bindings } from "../index";
 import {
 	castPageVote,
+	composePostSlug,
 	getPageVote,
 	listPageReactions,
 	listUserPageReactions,
@@ -25,6 +26,7 @@ import {
 	upsertPost,
 	type VoteValue,
 } from "../db/queries";
+import { resolveRequestSite } from "../lib/sites";
 import { resolveActor } from "../lib/active-user";
 import { requireIpHash } from "../lib/ip-hash";
 import { checkRateLimit } from "../lib/ratelimit";
@@ -70,8 +72,11 @@ pageEngagement.get("/", async (c) => {
 	// renders `json.error` verbatim, so this is what makes the error match the
 	// language the rest of the widget is in.
 	const t = c.get("t") ?? tFor(FALLBACK_LOCALE);
-	const slug = validateSlug(c.req.query("slug") ?? "");
-	if (!slug) return c.json({ error: t("err.post.invalid") }, 400);
+	const rawSlug = validateSlug(c.req.query("slug") ?? "");
+	if (!rawSlug) return c.json({ error: t("err.post.invalid") }, 400);
+
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const slug = composePostSlug(site?.id, rawSlug);
 
 	const flags = await loadFlags(c.env);
 	// Resolve identity only if at least one surface is on AND a session/ghost
@@ -113,8 +118,12 @@ pageEngagement.post("/reactions", async (c) => {
 	const body = await c.req.json<ReactionBody>().catch(() => null);
 	if (!body) return c.json({ error: t("err.internal") }, 400);
 
-	const slug = validateSlug(body.slug ?? "");
-	if (!slug) return c.json({ error: t("err.post.invalid") }, 400);
+	const rawSlug = validateSlug(body.slug ?? "");
+	if (!rawSlug) return c.json({ error: t("err.post.invalid") }, 400);
+
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const slug = composePostSlug(site?.id, rawSlug);
+
 	const kind = (body.kind ?? "").trim();
 	// The operator's enabled list, not the whole vocabulary: a kind turned off
 	// in Settings has no button, so a POST for it is a script, not a reader.
@@ -138,7 +147,7 @@ pageEngagement.post("/reactions", async (c) => {
 
 	// The post row must exist (FK). Create it lazily — a reader may react
 	// before anyone has commented.
-	await upsertPost(c.env.DB, slug, null, null);
+	await upsertPost(c.env.DB, slug, null, null, null, site?.id, rawSlug);
 	const actor = await resolveActor(c, ipHash);
 	if (!actor.ok) return c.json({ error: t("err.banned") }, 403);
 	const result = await togglePageReaction(c.env.DB, slug, actor.userId, kind);
@@ -170,8 +179,12 @@ pageEngagement.post("/votes", async (c) => {
 	const body = await c.req.json<VoteBody>().catch(() => null);
 	if (!body) return c.json({ error: t("err.internal") }, 400);
 
-	const slug = validateSlug(body.slug ?? "");
-	if (!slug) return c.json({ error: t("err.post.invalid") }, 400);
+	const rawSlug = validateSlug(body.slug ?? "");
+	if (!rawSlug) return c.json({ error: t("err.post.invalid") }, 400);
+
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const slug = composePostSlug(site?.id, rawSlug);
+
 	const value = normalizeValue(body.value);
 	if (value === null) return c.json({ error: "invalid_value" }, 400);
 
@@ -195,7 +208,7 @@ pageEngagement.post("/votes", async (c) => {
 		return c.json({ error: t("err.ratelimit") }, 429);
 	}
 
-	await upsertPost(c.env.DB, slug, null, null);
+	await upsertPost(c.env.DB, slug, null, null, null, site?.id, rawSlug);
 	const actor = await resolveActor(c, ipHash);
 	if (!actor.ok) return c.json({ error: t("err.banned") }, 403);
 	const result = await castPageVote(c.env.DB, slug, actor.userId, value);

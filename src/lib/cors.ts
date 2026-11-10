@@ -23,6 +23,9 @@
  *                          which arrives from a mail provider's servers)
  */
 import type { MiddlewareHandler } from "hono";
+import type { D1Database } from "@cloudflare/workers-types";
+import { getCachedSites } from "./sites";
+import { normalizeDomain } from "../db/queries";
 
 // Anchored at both ends — an optional trailing slash is allowed for
 // path-normalization tolerance, but sub-paths like
@@ -122,6 +125,7 @@ const parseAllowed = parseAllowedOrigins;
 export const allowedPostUrl = (
 	raw: string | null | undefined,
 	allowedOrigins: string | undefined,
+	extraAllowedDomains?: string[],
 ): string | null => {
 	if (typeof raw !== "string" || raw.length === 0 || raw.length > 2048) {
 		return null;
@@ -133,7 +137,11 @@ export const allowedPostUrl = (
 		return null;
 	}
 	if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-	if (!parseAllowedOrigins(allowedOrigins).has(u.origin)) return null;
+	const isAllowedOrigin = parseAllowedOrigins(allowedOrigins).has(u.origin);
+	const isAllowedDomain = extraAllowedDomains
+		? extraAllowedDomains.includes(u.hostname.toLowerCase())
+		: false;
+	if (!isAllowedOrigin && !isAllowedDomain) return null;
 	return u.toString();
 };
 
@@ -188,14 +196,23 @@ export const corsAndCsrf = (): MiddlewareHandler => {
 		const origin = c.req.header("origin");
 		const referer = c.req.header("referer");
 		const secFetchSite = c.req.header("sec-fetch-site");
-		const env = c.env as Record<string, string | undefined>;
-		const allowed = parseAllowed(env.ALLOWED_ORIGINS);
+		const env = c.env as Record<string, unknown>;
+		const allowed = parseAllowed(env.ALLOWED_ORIGINS as string | undefined);
 		const isDev = env.ENV === "dev";
 		const path = c.req.path;
 
+		let isSiteDomain = false;
+		if (origin && env.DB) {
+			const originHost = normalizeDomain(origin);
+			if (originHost) {
+				const sites = await getCachedSites(env.DB as D1Database);
+				isSiteDomain = sites.some((s) => s.domain.toLowerCase() === originHost);
+			}
+		}
+
 		// CORS preflight.
 		if (c.req.method === "OPTIONS") {
-			if (origin && (matches(origin, allowed) || isDev)) {
+			if (origin && (matches(origin, allowed) || isSiteDomain || isDev)) {
 				c.header("Access-Control-Allow-Origin", origin);
 				c.header("Access-Control-Allow-Credentials", "true");
 				c.header(
@@ -228,13 +245,14 @@ export const corsAndCsrf = (): MiddlewareHandler => {
 			secFetchSite,
 		);
 		const noOriginPost = isNoOriginPost(c.req.method, path, origin);
+		const originAllowed = origin ? matches(origin, allowed) || isSiteDomain : false;
 		if (
 			!isCarveOut(c.req.method, path) &&
 			!selfOriginPost &&
 			!noOriginPost &&
 			!isDev
 		) {
-			if (!origin || !matches(origin, allowed)) {
+			if (!origin || !originAllowed) {
 				return c.json({ error: "err.origin.forbidden" }, 403);
 			}
 		}
@@ -245,7 +263,7 @@ export const corsAndCsrf = (): MiddlewareHandler => {
 		// stays. Handlers that return a raw Response (the edge-cache paths in
 		// lib/response-cache.ts) drop these prepared headers entirely, hence
 		// the post-next backfill below.
-		const corsOk = origin && (matches(origin, allowed) || isDev);
+		const corsOk = origin && (originAllowed || isDev);
 		if (corsOk) {
 			c.header("Access-Control-Allow-Origin", origin);
 			c.header("Access-Control-Allow-Credentials", "true");

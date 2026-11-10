@@ -53,18 +53,44 @@ export type Post = {
 	/** Host page's real publish time (epoch ms), from data-published. The
 	 *  anchor for age-based auto-close; NULL falls back to created_at. */
 	published_at: number | null;
+	site_id: string | null;
+	raw_slug: string;
 };
 
-type PostRow = Omit<Post, "closed"> & { closed: number };
+type PostRow = Omit<Post, "closed" | "raw_slug"> & {
+	closed: number;
+	site_id?: string | null;
+	raw_slug?: string | null;
+};
 
-const toPost = (row: PostRow): Post => ({
-	...row,
-	closed: row.closed === 1,
-});
+export const composePostSlug = (siteId: string | null | undefined, rawSlug: string): string => {
+	if (!siteId) return rawSlug;
+	if (rawSlug.startsWith(`${siteId}::`)) return rawSlug;
+	return `${siteId}::${rawSlug}`;
+};
+
+export const decomposePostSlug = (slug: string): { siteId: string | null; rawSlug: string } => {
+	const idx = slug.indexOf("::");
+	if (idx === -1) return { siteId: null, rawSlug: slug };
+	return { siteId: slug.slice(0, idx), rawSlug: slug.slice(idx + 2) };
+};
+
+const toPost = (row: PostRow): Post => {
+	const slug = row.slug;
+	const raw_slug =
+		row.raw_slug ??
+		(slug.includes("::") ? slug.slice(slug.indexOf("::") + 2) : slug);
+	return {
+		...row,
+		closed: row.closed === 1,
+		site_id: row.site_id ?? null,
+		raw_slug,
+	};
+};
 
 // Every posts SELECT goes through this list so the new lifecycle columns stay
 // in one place.
-const POST_COLS = "slug, title, url, created_at, closed, published_at";
+const POST_COLS = "slug, title, url, created_at, closed, published_at, site_id, raw_slug";
 
 export type UserRole = "user" | "mod" | "admin";
 
@@ -164,8 +190,14 @@ export const upsertPost = async (
 	title: string | null,
 	url: string | null,
 	publishedAt: number | null = null,
+	siteId: string | null = null,
+	rawSlugInput?: string | null,
 ): Promise<Post> => {
 	const now = Date.now();
+	const targetSlug = siteId && !slug.startsWith(`${siteId}::`) ? `${siteId}::${slug}` : slug;
+	const resolvedRawSlug = rawSlugInput ?? (targetSlug.includes("::") ? targetSlug.slice(targetSlug.indexOf("::") + 2) : slug);
+	const resolvedSiteId = siteId ?? (targetSlug.includes("::") ? targetSlug.slice(0, targetSlug.indexOf("::")) : null);
+
 	// title and url are first-writer-wins: COALESCE(existing, excluded). Both
 	// arrive on an unauthenticated POST /api/v1/comments at the same trust level
 	// as the comment body, and this upsert runs *before* spam evaluation, so a
@@ -191,32 +223,81 @@ export const upsertPost = async (
 	// engagement) instead. That is the pre-`data-published` behavior and it errs
 	// toward closing *later* than the operator asked, which is the safe
 	// direction — where the poisoned value errs toward closed forever.
+	if (resolvedSiteId && resolvedRawSlug) {
+		const existingTarget = await db.prepare("SELECT 1 FROM posts WHERE slug = ?").bind(targetSlug).first();
+		if (!existingTarget) {
+			await adoptLegacyPost(db, resolvedRawSlug, resolvedSiteId);
+		}
+	}
+
 	await db
 		.prepare(
-			`INSERT INTO posts (slug, title, url, created_at, published_at)
-			 VALUES (?, ?, ?, ?, ?)
+			`INSERT INTO posts (slug, title, url, created_at, published_at, site_id, raw_slug)
+			 VALUES (?, ?, ?, ?, ?, ?, ?)
 			 ON CONFLICT(slug) DO UPDATE SET
-			   title        = COALESCE(posts.title, excluded.title),
-			   url          = COALESCE(posts.url,   excluded.url)`,
+			   title    = COALESCE(posts.title, excluded.title),
+			   url      = COALESCE(posts.url,   excluded.url),
+			   site_id  = COALESCE(posts.site_id, excluded.site_id),
+			   raw_slug = COALESCE(posts.raw_slug, excluded.raw_slug)`,
 		)
-		.bind(slug, title, url, now, publishedAt)
+		.bind(targetSlug, title, url, now, publishedAt, resolvedSiteId, resolvedRawSlug)
 		.run();
 	const row = await db
 		.prepare(`SELECT ${POST_COLS} FROM posts WHERE slug = ?`)
-		.bind(slug)
+		.bind(targetSlug)
 		.first<PostRow>();
 	if (!row) throw new Error("upsertPost: post not found after insert");
 	return toPost(row);
 };
 
+export const adoptLegacyPost = async (
+	db: D1Database,
+	rawSlug: string,
+	siteId: string,
+): Promise<Post | null> => {
+	const legacyPost = await db
+		.prepare(`SELECT ${POST_COLS} FROM posts WHERE slug = ? AND site_id IS NULL`)
+		.bind(rawSlug)
+		.first<PostRow>();
+	if (!legacyPost) return null;
+
+	const newSlug = `${siteId}::${rawSlug}`;
+	await db.batch([
+		db.prepare(`UPDATE posts SET slug = ?, site_id = ?, raw_slug = ? WHERE slug = ?`).bind(newSlug, siteId, rawSlug, rawSlug),
+		db.prepare(`UPDATE comments SET post_slug = ? WHERE post_slug = ?`).bind(newSlug, rawSlug),
+		db.prepare(`UPDATE subscriptions SET post_slug = ? WHERE post_slug = ?`).bind(newSlug, rawSlug),
+		db.prepare(`UPDATE page_reactions SET post_slug = ? WHERE post_slug = ?`).bind(newSlug, rawSlug),
+		db.prepare(`UPDATE page_votes SET post_slug = ? WHERE post_slug = ?`).bind(newSlug, rawSlug),
+		db.prepare(`UPDATE page_reaction_totals SET post_slug = ? WHERE post_slug = ?`).bind(newSlug, rawSlug),
+	]);
+	const updated = await db
+		.prepare(`SELECT ${POST_COLS} FROM posts WHERE slug = ?`)
+		.bind(newSlug)
+		.first<PostRow>();
+	return updated ? toPost(updated) : null;
+};
+
 export const getPost = async (
 	db: D1Database,
 	slug: string,
+	siteId?: string | null,
 ): Promise<Post | null> => {
-	const row = await db
+	const targetSlug = siteId && !slug.startsWith(`${siteId}::`) ? `${siteId}::${slug}` : slug;
+	let row = await db
 		.prepare(`SELECT ${POST_COLS} FROM posts WHERE slug = ?`)
-		.bind(slug)
+		.bind(targetSlug)
 		.first<PostRow>();
+	if (!row && siteId) {
+		const raw = slug.includes("::") ? slug.slice(slug.indexOf("::") + 2) : slug;
+		const adopted = await adoptLegacyPost(db, raw, siteId);
+		if (adopted) return adopted;
+	}
+	if (!row && siteId && targetSlug !== slug) {
+		row = await db
+			.prepare(`SELECT ${POST_COLS} FROM posts WHERE slug = ? AND (site_id IS NULL OR site_id = ?)`)
+			.bind(slug, siteId)
+			.first<PostRow>();
+	}
 	return row ? toPost(row) : null;
 };
 
@@ -1871,6 +1952,8 @@ export type AdminComment = Omit<Comment, "as_staff"> & {
 	// them, to link a row back to the page it was posted on.
 	post_url?: string | null;
 	post_title?: string | null;
+	site_id?: string | null;
+	site_name?: string | null;
 	// Optional for the same reason: only adminGetCommentDetail's top-level
 	// `comment` query selects it — the parent/replies/ip_siblings/user_recent
 	// side-queries on the same page don't.
@@ -1902,6 +1985,7 @@ export type AdminCommentFilter = {
 	from?: number;
 	to?: number;
 	host?: string;
+	site_id?: string;
 	/** Restrict to comments that have at least one OPEN reader report. */
 	reported?: boolean;
 };
@@ -1952,6 +2036,10 @@ export const adminListComments = async (
 		where.push(`${hostExpr("p.url")} = ?`);
 		binds.push(filter.host);
 	}
+	if (filter.site_id) {
+		where.push("p.site_id = ?");
+		binds.push(filter.site_id);
+	}
 	if (filter.reported) {
 		where.push(
 			"EXISTS (SELECT 1 FROM reports r WHERE r.comment_id = c.id AND r.status = 'open')",
@@ -1971,10 +2059,13 @@ export const adminListComments = async (
 		       ${hostExpr("p.url")} AS host,
 		       p.url        AS post_url,
 		       p.title      AS post_title,
+		       p.site_id    AS site_id,
+		       s.name       AS site_name,
 		       (SELECT COUNT(*) FROM comments r WHERE r.parent_id = c.id) AS reply_count
 		  FROM comments c
 		  LEFT JOIN users u ON u.id = c.user_id
 		  LEFT JOIN posts p ON p.slug = c.post_slug
+		  LEFT JOIN sites s ON s.id = p.site_id
 		 WHERE ${where.join(" AND ")}
 		 ORDER BY c.created_at DESC, c.id DESC
 		 LIMIT ?`;
@@ -2488,7 +2579,32 @@ export type AdminStats = {
 	banned_users: number;
 };
 
-export const adminStats = async (db: D1Database): Promise<AdminStats> => {
+export const adminStats = async (
+	db: D1Database,
+	siteId?: string | null,
+): Promise<AdminStats> => {
+	if (siteId) {
+		const row = await db
+			.prepare(
+				`SELECT
+				   (SELECT COUNT(*) FROM comments c JOIN posts p ON c.post_slug = p.slug WHERE p.site_id = ?)                          AS total_comments,
+				   (SELECT COUNT(*) FROM comments c JOIN posts p ON c.post_slug = p.slug WHERE p.site_id = ? AND c.status = 'pending') AS pending_comments,
+				   (SELECT COUNT(*) FROM comments c JOIN posts p ON c.post_slug = p.slug WHERE p.site_id = ? AND c.status = 'spam')    AS spam_comments,
+				   (SELECT COUNT(*) FROM users)                             AS total_users,
+				   (SELECT COUNT(*) FROM users WHERE is_banned = 1)         AS banned_users`,
+			)
+			.bind(siteId, siteId, siteId)
+			.first<AdminStats>();
+		return (
+			row ?? {
+				total_comments: 0,
+				pending_comments: 0,
+				spam_comments: 0,
+				total_users: 0,
+				banned_users: 0,
+			}
+		);
+	}
 	const row = await db
 		.prepare(
 			`SELECT
@@ -3202,7 +3318,8 @@ export type AuditTargetKind =
 	| "saved_reply"
 	| "post"
 	| "passkey"
-	| "system";
+	| "system"
+	| "site";
 
 export const ADMIN_ACTIONS = [
 	"approve",
@@ -3217,6 +3334,9 @@ export const ADMIN_ACTIONS = [
 	// Whole-site download. Meta is `{format, counts, complete}` — row counts
 	// only, never contents, same rule as `user.export`.
 	"site.export",
+	"site.create",
+	"site.update",
+	"site.delete",
 	"user.revoke_sessions",
 	"rerender",
 	"seed-demo",
@@ -3570,8 +3690,24 @@ export type TimelinePoint = { day: string; count: number };
 export const adminTimeline = async (
 	db: D1Database,
 	days: number,
+	siteId?: string | null,
 ): Promise<TimelinePoint[]> => {
 	const from = Date.now() - days * 24 * 3600 * 1000;
+	if (siteId) {
+		const result = await db
+			.prepare(
+				`SELECT strftime('%Y-%m-%d', c.created_at / 1000, 'unixepoch') AS day,
+				        COUNT(*) AS count
+				   FROM comments c
+				   JOIN posts p ON p.slug = c.post_slug
+				  WHERE c.created_at >= ? AND p.site_id = ?
+				  GROUP BY day
+				  ORDER BY day ASC`,
+			)
+			.bind(from, siteId)
+			.all<TimelinePoint>();
+		return result.results ?? [];
+	}
 	const result = await db
 		.prepare(
 			`SELECT strftime('%Y-%m-%d', created_at / 1000, 'unixepoch') AS day,
@@ -3596,8 +3732,28 @@ export const adminTopPosts = async (
 	db: D1Database,
 	days: number,
 	limit: number,
+	siteId?: string | null,
 ): Promise<TopPost[]> => {
 	const from = Date.now() - days * 24 * 3600 * 1000;
+	if (siteId) {
+		const result = await db
+			.prepare(
+				`SELECT c.post_slug AS post_slug,
+				        COUNT(*)    AS count,
+				        p.title     AS title
+				   FROM comments c
+				   JOIN posts p ON p.slug = c.post_slug
+				  WHERE c.created_at >= ?
+				    AND c.status = 'approved'
+				    AND p.site_id = ?
+				  GROUP BY c.post_slug
+				  ORDER BY count DESC
+				  LIMIT ?`,
+			)
+			.bind(from, siteId, limit)
+			.all<TopPost>();
+		return result.results ?? [];
+	}
 	const result = await db
 		.prepare(
 			`SELECT c.post_slug AS post_slug,
@@ -3627,8 +3783,30 @@ export const adminTopCommenters = async (
 	db: D1Database,
 	days: number,
 	limit: number,
+	siteId?: string | null,
 ): Promise<TopCommenter[]> => {
 	const from = Date.now() - days * 24 * 3600 * 1000;
+	if (siteId) {
+		const result = await db
+			.prepare(
+				`SELECT c.user_id      AS user_id,
+				        u.name         AS name,
+				        u.avatar_url   AS avatar_url,
+				        COUNT(*)       AS count
+				   FROM comments c
+				   JOIN users u ON u.id = c.user_id
+				   JOIN posts p ON p.slug = c.post_slug
+				  WHERE c.created_at >= ?
+				    AND c.status = 'approved'
+				    AND p.site_id = ?
+				  GROUP BY c.user_id
+				  ORDER BY count DESC
+				  LIMIT ?`,
+			)
+			.bind(from, siteId, limit)
+			.all<TopCommenter>();
+		return result.results ?? [];
+	}
 	const result = await db
 		.prepare(
 			`SELECT c.user_id      AS user_id,
@@ -4169,6 +4347,7 @@ export type WebhookEndpoint = {
 	disabled_at: number | null;
 	created_at: number;
 	updated_at: number;
+	site_id?: string | null;
 };
 
 type WebhookEndpointRow = {
@@ -4182,6 +4361,7 @@ type WebhookEndpointRow = {
 	disabled_at: number | null;
 	created_at: number;
 	updated_at: number;
+	site_id?: string | null;
 };
 
 const toWebhookEndpoint = (row: WebhookEndpointRow): WebhookEndpoint => ({
@@ -4201,6 +4381,7 @@ const toWebhookEndpoint = (row: WebhookEndpointRow): WebhookEndpoint => ({
 	disabled_at: row.disabled_at,
 	created_at: row.created_at,
 	updated_at: row.updated_at,
+	site_id: row.site_id ?? null,
 });
 
 export const listWebhookEndpoints = async (
@@ -4209,7 +4390,7 @@ export const listWebhookEndpoints = async (
 	const rs = await db
 		.prepare(
 			`SELECT id, url, secret, events, adapter, enabled, fail_count,
-			        disabled_at, created_at, updated_at
+			        disabled_at, created_at, updated_at, site_id
 			   FROM webhook_endpoints
 			  ORDER BY created_at ASC`,
 		)
@@ -4219,16 +4400,21 @@ export const listWebhookEndpoints = async (
 
 export const listEnabledWebhookEndpoints = async (
 	db: D1Database,
+	siteId?: string | null,
 ): Promise<WebhookEndpoint[]> => {
-	const rs = await db
-		.prepare(
-			`SELECT id, url, secret, events, adapter, enabled, fail_count,
-			        disabled_at, created_at, updated_at
-			   FROM webhook_endpoints
-			  WHERE enabled = 1
-			  ORDER BY created_at ASC`,
-		)
-		.all<WebhookEndpointRow>();
+	const sql = siteId
+		? `SELECT id, url, secret, events, adapter, enabled, fail_count,
+		          disabled_at, created_at, updated_at, site_id
+		     FROM webhook_endpoints
+		    WHERE enabled = 1 AND (site_id IS NULL OR site_id = ?)
+		    ORDER BY created_at ASC`
+		: `SELECT id, url, secret, events, adapter, enabled, fail_count,
+		          disabled_at, created_at, updated_at, site_id
+		     FROM webhook_endpoints
+		    WHERE enabled = 1
+		    ORDER BY created_at ASC`;
+	const stmt = siteId ? db.prepare(sql).bind(siteId) : db.prepare(sql);
+	const rs = await stmt.all<WebhookEndpointRow>();
 	return (rs.results ?? []).map(toWebhookEndpoint);
 };
 
@@ -4239,7 +4425,7 @@ export const getWebhookEndpoint = async (
 	const row = await db
 		.prepare(
 			`SELECT id, url, secret, events, adapter, enabled, fail_count,
-			        disabled_at, created_at, updated_at
+			        disabled_at, created_at, updated_at, site_id
 			   FROM webhook_endpoints WHERE id = ?`,
 		)
 		.bind(id)
@@ -4253,6 +4439,7 @@ export type WebhookEndpointInput = {
 	events: string[] | null;
 	adapter: WebhookAdapter;
 	enabled: boolean;
+	site_id?: string | null;
 };
 
 /**
@@ -4279,8 +4466,8 @@ export const createWebhookEndpoint = async (
 		.prepare(
 			`INSERT INTO webhook_endpoints
 			   (id, url, secret, events, adapter, enabled, fail_count,
-			    disabled_at, created_at, updated_at)
-			 VALUES (?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`,
+			    disabled_at, created_at, updated_at, site_id)
+			 VALUES (?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
 		)
 		.bind(
 			id,
@@ -4291,6 +4478,7 @@ export const createWebhookEndpoint = async (
 			input.enabled ? 1 : 0,
 			now,
 			now,
+			input.site_id ?? null,
 		)
 		.run();
 	const created = await getWebhookEndpoint(db, id);
@@ -4322,6 +4510,10 @@ export const updateWebhookEndpoint = async (
 	if (input.adapter !== undefined) {
 		sets.push("adapter = ?");
 		values.push(input.adapter);
+	}
+	if (input.site_id !== undefined) {
+		sets.push("site_id = ?");
+		values.push(input.site_id);
 	}
 	if (input.enabled !== undefined) {
 		sets.push("enabled = ?");
@@ -5014,4 +5206,228 @@ export const listTelegramDigestLinks = async (
 		)
 		.all<TelegramLinkRow>();
 	return (rs.results ?? []).map(toTelegramLink);
+};
+
+// ---------------------------------------------------------------------------
+// Multi-Site Architecture (Sites CRUD)
+// ---------------------------------------------------------------------------
+
+export type Site = {
+	id: string;
+	domain: string;
+	name: string;
+	description: string | null;
+	default_locale: string;
+	allow_anonymous: boolean;
+	auto_close_days: number;
+	created_at: number;
+	updated_at: number;
+};
+
+type SiteRow = Omit<Site, "allow_anonymous"> & { allow_anonymous: number };
+
+const toSite = (row: SiteRow): Site => ({
+	...row,
+	allow_anonymous: row.allow_anonymous === 1,
+});
+
+export type SiteInput = {
+	domain: string;
+	name: string;
+	description?: string | null;
+	default_locale?: string;
+	allow_anonymous?: boolean;
+	auto_close_days?: number;
+};
+
+export type SitePatch = {
+	domain?: string;
+	name?: string;
+	description?: string | null;
+	default_locale?: string;
+	allow_anonymous?: boolean;
+	auto_close_days?: number;
+};
+
+export const normalizeDomain = (domain: string): string => {
+	const trimmed = domain.trim();
+	if (!trimmed) return "";
+	try {
+		const u = new URL(trimmed.includes("://") ? trimmed : `http://${trimmed}`);
+		return u.hostname.toLowerCase();
+	} catch {
+		return "";
+	}
+};
+
+export const createSite = async (
+	db: D1Database,
+	input: SiteInput,
+): Promise<Site> => {
+	const now = Date.now();
+	const id = ulid();
+	const domain = normalizeDomain(input.domain);
+	if (!domain) {
+		throw new Error("Invalid domain");
+	}
+	const defaultLocale = input.default_locale ?? "zh-Hant";
+	const allowAnonymous = input.allow_anonymous ?? true;
+	const autoCloseDays = input.auto_close_days ?? 0;
+
+	await db
+		.prepare(
+			`INSERT INTO sites (id, domain, name, description, default_locale, allow_anonymous, auto_close_days, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		)
+		.bind(
+			id,
+			domain,
+			input.name.trim(),
+			input.description ?? null,
+			defaultLocale,
+			allowAnonymous ? 1 : 0,
+			autoCloseDays,
+			now,
+			now,
+		)
+		.run();
+
+	const site = await getSiteById(db, id);
+	if (!site) throw new Error("createSite: failed to retrieve created site");
+	return site;
+};
+
+export const getSiteById = async (
+	db: D1Database,
+	id: string,
+): Promise<Site | null> => {
+	const row = await db
+		.prepare(
+			`SELECT id, domain, name, description, default_locale, allow_anonymous, auto_close_days, created_at, updated_at
+			   FROM sites
+			  WHERE id = ?`,
+		)
+		.bind(id)
+		.first<SiteRow>();
+	return row ? toSite(row) : null;
+};
+
+export const getSiteByDomain = async (
+	db: D1Database,
+	domain: string,
+): Promise<Site | null> => {
+	const norm = normalizeDomain(domain);
+	const row = await db
+		.prepare(
+			`SELECT id, domain, name, description, default_locale, allow_anonymous, auto_close_days, created_at, updated_at
+			   FROM sites
+			  WHERE domain = ?`,
+		)
+		.bind(norm)
+		.first<SiteRow>();
+	return row ? toSite(row) : null;
+};
+
+export const listSites = async (db: D1Database): Promise<Site[]> => {
+	const rs = await db
+		.prepare(
+			`SELECT id, domain, name, description, default_locale, allow_anonymous, auto_close_days, created_at, updated_at
+			   FROM sites
+			  ORDER BY created_at ASC`,
+		)
+		.all<SiteRow>();
+	return (rs.results ?? []).map(toSite);
+};
+
+export type SiteWithStats = Site & {
+	post_count: number;
+	comment_count: number;
+};
+
+export const listSitesWithStats = async (
+	db: D1Database,
+): Promise<SiteWithStats[]> => {
+	const rs = await db
+		.prepare(
+			`SELECT s.id, s.domain, s.name, s.description, s.default_locale, s.allow_anonymous, s.auto_close_days, s.created_at, s.updated_at,
+			        (SELECT COUNT(*) FROM posts p WHERE p.site_id = s.id) AS post_count,
+			        (SELECT COUNT(*) FROM comments c JOIN posts p ON p.slug = c.post_slug WHERE p.site_id = s.id AND c.status != 'spam') AS comment_count
+			   FROM sites s
+			  ORDER BY s.created_at ASC`,
+		)
+		.all<SiteRow & { post_count: number; comment_count: number }>();
+	return (rs.results ?? []).map((r) => ({
+		...toSite(r),
+		post_count: r.post_count ?? 0,
+		comment_count: r.comment_count ?? 0,
+	}));
+};
+
+export const updateSite = async (
+	db: D1Database,
+	id: string,
+	patch: SitePatch,
+): Promise<Site | null> => {
+	const existing = await getSiteById(db, id);
+	if (!existing) return null;
+
+	const sets: string[] = ["updated_at = ?"];
+	const binds: unknown[] = [Date.now()];
+
+	if (patch.domain !== undefined) {
+		const norm = normalizeDomain(patch.domain);
+		if (!norm) throw new Error("Invalid domain");
+		sets.push("domain = ?");
+		binds.push(norm);
+	}
+	if (patch.name !== undefined) {
+		sets.push("name = ?");
+		binds.push(patch.name.trim());
+	}
+	if (patch.description !== undefined) {
+		sets.push("description = ?");
+		binds.push(patch.description);
+	}
+	if (patch.default_locale !== undefined) {
+		sets.push("default_locale = ?");
+		binds.push(patch.default_locale);
+	}
+	if (patch.allow_anonymous !== undefined) {
+		sets.push("allow_anonymous = ?");
+		binds.push(patch.allow_anonymous ? 1 : 0);
+	}
+	if (patch.auto_close_days !== undefined) {
+		sets.push("auto_close_days = ?");
+		binds.push(patch.auto_close_days);
+	}
+
+	binds.push(id);
+	await db
+		.prepare(`UPDATE sites SET ${sets.join(", ")} WHERE id = ?`)
+		.bind(...binds)
+		.run();
+
+	return getSiteById(db, id);
+};
+
+export const deleteSite = async (
+	db: D1Database,
+	id: string,
+): Promise<boolean> => {
+	const res = await db
+		.prepare("DELETE FROM sites WHERE id = ?")
+		.bind(id)
+		.run();
+	return (res.meta?.changes ?? 0) > 0;
+};
+
+export const countPostsForSite = async (
+	db: D1Database,
+	siteId: string,
+): Promise<number> => {
+	const row = await db
+		.prepare("SELECT COUNT(*) AS count FROM posts WHERE site_id = ?")
+		.bind(siteId)
+		.first<{ count: number }>();
+	return row?.count ?? 0;
 };

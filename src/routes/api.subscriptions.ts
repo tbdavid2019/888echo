@@ -59,7 +59,9 @@ import {
 	markAllSubscriptionsUnsubscribedForEmail,
 	markSubscriptionUnsubscribed,
 	upsertSubscription,
+	composePostSlug,
 } from "../db/queries";
+import { resolveRequestSite } from "../lib/sites";
 import { requireActiveUser } from "../lib/active-user";
 import { confirmSendBudgets, reserveSend } from "../lib/email-budget";
 import { requireIpHash } from "../lib/ip-hash";
@@ -158,10 +160,12 @@ subscriptions.post("/", async (c) => {
 	// this slug is stored as-is, becomes the subject-line fallback when the post
 	// has no title, and is rendered on the confirm and unsubscribe pages, so a
 	// CR, LF or angle bracket here would reach a mail header and an HTML body.
-	const post_slug = (body.post_slug ?? "").trim();
-	if (!SLUG_RE.test(post_slug)) {
+	const rawSlug = (body.post_slug ?? "").trim();
+	if (!SLUG_RE.test(rawSlug)) {
 		return c.json({ error: t("err.post.invalid") }, 400);
 	}
+	const site = await resolveRequestSite(c.req, c.env.DB);
+	const post_slug = composePostSlug(site?.id, rawSlug);
 
 	// Session first, because it can supply the address. requireActiveUser,
 	// not getUser: a banned user must not get the skip-the-confirmation-email
@@ -732,8 +736,10 @@ subscriptions.get("/mine", async (c) => {
 	if (gate instanceof Response) return gate;
 	const { email } = gate;
 
-	const post_slug = (c.req.query("post_slug") ?? "").trim();
-	if (post_slug) {
+	const rawSlug = (c.req.query("post_slug") ?? "").trim();
+	if (rawSlug) {
+		const site = await resolveRequestSite(c.req, c.env.DB);
+		const post_slug = composePostSlug(site?.id, rawSlug);
 		// Bell state. One read on UNIQUE(post_slug, email) — this is the query
 		// the widget makes on every mount, so it must not become a table scan.
 		const row = email
@@ -764,7 +770,11 @@ subscriptions.get("/mine", async (c) => {
 	const list = email
 		? await listActiveSubscriptionsForEmail(c.env.DB, email)
 		: [];
-	return c.json({ subscriptions: list });
+	const cleanList = list.map((s) => ({
+		...s,
+		post_slug: s.post_slug.includes("::") ? s.post_slug.slice(s.post_slug.indexOf("::") + 2) : s.post_slug,
+	}));
+	return c.json({ subscriptions: cleanList });
 });
 
 /**
