@@ -30,27 +30,51 @@
 
 ## 📸 介面預覽
 
-### 多站台系統管理（Multi-Site System Management）
-在單一 888echo 實例中輕鬆納管多個獨立網域，靈活配置站台專屬規則，並一覽各站的文章與留言統計：
+<div align="center">
 
-![888echo 站台系統管理](docs/screenshots/admin-sites.png)
-
-### 讀者端討論元件（Widget）
-透過 Shadow DOM 渲染於宿主網頁中，完全不受宿主 CSS 污染：
-
+### 💬 讀者端討論元件（Shadow DOM 留言框）
 ![888echo 留言框明亮模式](docs/screenshots/widget-light.png)
 
-### 管理員控制台（Admin Dashboard）
-直觀掌握待審留言、總評論數、使用者增長、嵌入程式碼產生器與 30 天留言趨勢：
+*888echo 留言元件 — 原生繁體中文、豐富表情符號回應、置頂留言、作者身分徽章與巢狀回覆討論串。*
 
+<br>
+
+### 🌐 系統級多站台管理（Multi-Site Management）
+![888echo 站台系統管理](docs/screenshots/admin-sites.png)
+
+*集中納管多個獨立網域（如官方部落格、即時快訊、播客電台），獨立資料庫隔離與客製化站台政策。*
+
+<br>
+
+### 📊 管理員控制台與數據儀表板（Admin Dashboard）
 ![888echo 管理員儀表板](docs/screenshots/admin-dashboard.png)
 
-### 審核佇列（Moderation Queue）
-集中批次審核、標記垃圾留言或直接刪除：
+*全局運維數據中心 — 留言與使用者統計、站台流量分佈、嵌入語法產生器與 30 天互動趨勢圖表。*
 
+<br>
+
+### 🛡️ 審核佇列（Moderation Queue）
 ![888echo 審核佇列](docs/screenshots/admin-queue-pending.png)
 
-> 更多展示（包含暗黑模式、行動版視圖與其他管理頁面），請參閱：[`docs/screenshots.md`](docs/screenshots.md)。
+*審計級多維審核流 — 待審批次放行、垃圾留言隔離、被檢舉留言排查與行內快捷操作。*
+
+<br>
+
+### ⚙️ 系統設定與動態功能特性（System Settings）
+![888echo 系統設定](docs/screenshots/admin-settings.png)
+
+*零重啟即時熱套用 — 留言開關、投票與表情反應控制、人機防護閥值與反垃圾敏感詞詞庫。*
+
+<br>
+
+### 🔐 零信任 Passkey 生物辨識登入門戶（Zero-Trust Login）
+![888echo 零信任 Passkey 登入門戶](docs/screenshots/admin-login.png)
+
+*免密碼安全認證 — 支援 Touch ID、Face ID、Windows Hello 硬體金鑰與 Email 2FA OTP 雙因素防護。*
+
+</div>
+
+> 更多展示（包含暗黑模式、行動版視圖、稽核日誌與 Webhooks 管理等完整介面），請參閱：[`docs/screenshots.md`](docs/screenshots.md)。
 
 ---
 

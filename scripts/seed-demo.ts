@@ -26,8 +26,8 @@ const DB_BINDING = "DB";
 const isRemote = process.argv.includes("--remote");
 const remoteFlag = isRemote ? "--remote" : "--local";
 const POST_SLUG = "welcome";
-const POST_TITLE = "Welcome to Garrul";
-const POST_URL = "https://garrul.com/welcome";
+const POST_TITLE = "888 官方部落格：邁向主權邊緣 AI 架構新紀元";
+const POST_URL = "https://blog.david888.com/welcome";
 
 const runWrangler = (args: string[]): string =>
 	execFileSync("wrangler", args, {
@@ -56,36 +56,32 @@ type SeedComment = {
 
 const SEED: SeedComment[] = [
 	{
-		author: "Garrul Bot",
+		author: "888echo Bot",
 		body:
-			"Welcome! This is **Garrul**, a self-hosted comment system on " +
-			"Cloudflare Workers. Threaded, markdown-aware, no tracking.",
+			"歡迎來到 **888echo** 自託管主權邊緣留言系統！構建於 Cloudflare Workers、D1 與 KV，支援巢狀回覆、Markdown 排版與表情符號反應。",
 		replies: [
 			{
-				author: "Ada",
+				author: "林小明",
 				body:
-					"Looks great. How does it handle Safari's third-party cookie " +
-					"blocking?",
+					"繁體中文在地化體驗極佳！在 Safari 和 Chrome 上的載入速度都非常迅速，且完全零第三方廣告追蹤。",
 				replies: [
 					{
-						author: "Garrul Bot",
+						author: "David (維護者)",
 						body:
-							"Session cookies are `SameSite=None; Secure; Partitioned` " +
-							"(CHIPS). Works in Safari and Chrome.",
+							"Session Cookie 採用 `SameSite=None; Secure; Partitioned` (CHIPS)，完美支援第三方嵌入與零信任隱私防護標準！",
 					},
 				],
 			},
 			{
-				author: "Marvin",
-				body: "Markdown sample: `code`, **bold**, _italic_, and a [link](https://example.com).",
+				author: "張工程師",
+				body: "Markdown 語法展示：`code`、**粗體**、_斜體_，以及超連結 [888 官方網站](https://blog.david888.com)。",
 			},
 		],
 	},
 	{
-		author: "Linus",
+		author: "Alex",
 		body:
-			"Try replying to this comment. The depth cap is six — beyond that, " +
-			"replies render flat with an `@parent` prefix.",
+			"多站台系統管理功能非常實用，一個 Worker 就能服務 blog、news2、podcast 等多個獨立網域！",
 	},
 ];
 

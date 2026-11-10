@@ -2,19 +2,19 @@
 
 A visual tour of the reader-facing widget and the admin UI.
 
-> Screenshots reflect **v2.16.0** and may lag the current UI. They are
+> Screenshots reflect **888echo** with full Traditional Chinese localization and multi-site management. They are
 > regenerated from seeded demo data, not from a live instance — every name,
 > avatar, comment, email address and webhook URL below is invented.
 
 ## The widget
 
 What your readers see. The widget renders inside a Shadow DOM, so the host
-page's CSS can't leak in and Garrul's can't leak out. Colors come from CSS
+page's CSS can't leak in and 888echo's can't leak out. Colors come from CSS
 variables — see [`THEMING.md`](THEMING.md).
 
 ### Light
 
-![Garrul comment widget on a light host page, showing the page reaction bar, the comment composer with a markdown toolbar, and a threaded discussion](screenshots/widget-light.png)
+![888echo comment widget on a light host page, showing the page reaction bar, the comment composer with a markdown toolbar, and a threaded discussion](screenshots/widget-light.png)
 
 ### Dark
 
@@ -99,6 +99,12 @@ tab is shown here.
 
 ![Settings page, Features tab, with toggles for accepting comments, per-comment emoji reactions, comment votes, downvotes, page reactions, page votes and deleted-comment placeholders](screenshots/admin-settings.png)
 
+### Zero-Trust Passkey Login Portal
+
+Passwordless authentication supporting WebAuthn / Passkey (Touch ID, Face ID, Windows Hello) and Email 2FA OTP codes.
+
+![888echo Zero-Trust Passkey Login Portal](screenshots/admin-login.png)
+
 ### Webhooks
 
 Outbound endpoints, the events each subscribes to, and their delivery health.
@@ -124,16 +130,17 @@ Who is subscribed to replies on which post, and whether they've confirmed.
 
 One-off maintenance jobs: re-render stored comment HTML after a sanitizer
 change, inspect IP-hash retention, seed a demo post, and import a Disqus export.
-Each panel reports current state first — here, all 134 comments are already at
-renderer version 2, so the rerender is a no-op.
+Each panel reports current state first.
 
 ![Operator page showing the rerender, IP-hash retention, seed-demo-post and Disqus import panels, each with its current status](screenshots/admin-operator.png)
 
 ## Regenerating these
 
-There's no committed harness for this — the screenshots are produced ad hoc
-against a local `wrangler dev` instance seeded with invented data, then
-downscaled to 1× and quantized to a 256-colour palette to keep the repo light.
+Run the automated script to regenerate all 18 screenshots in headless Chrome:
+
+```bash
+npx tsx scripts/generate-all-screenshots.ts
+```
 
 Two things to preserve if you reshoot them:
 

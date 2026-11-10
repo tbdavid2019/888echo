@@ -73,24 +73,49 @@ Every doc in the repo, grouped by task:
 
 ## Screenshots
 
-What your readers see, rendered inside a Shadow DOM so the host page's CSS
-can't collide with it:
+<div align="center">
 
-![Garrul comment widget on a host page, showing the page reaction bar, the markdown composer, and a threaded discussion](docs/screenshots/widget-light.png)
+### 💬 Embedded Comment Widget (Shadow DOM)
+![888echo comment widget on a host page, showing the page reaction bar, the markdown composer, and a threaded discussion](docs/screenshots/widget-light.png)
 
-The admin dashboard, with counts at a glance, your embed snippet ready to
-copy, and 30-day comment volume:
+*The 888echo widget in action — reaction bar, rich markdown editor, nested discussion thread, and native Traditional Chinese localization.*
 
-![Admin dashboard showing comment and user counts, the embed snippet, and a comments-per-day chart](docs/screenshots/admin-dashboard.png)
+<br>
 
-The multi-site management console, allowing you to manage distinct domains, configure site-level policies, and monitor post/comment volumes across all your properties:
-
+### 🌐 System-Level Multi-Site Management
 ![888echo Multi-Site Management Console](docs/screenshots/admin-sites.png)
 
-The moderation queue, where comments are approved, marked spam or deleted
-inline:
+*888echo Multi-Site System Management — isolated domains, custom policies, and multi-tenant tracking.*
 
-![Moderation queue listing pending comments with author, body, metadata and per-row actions](docs/screenshots/admin-queue-pending.png)
+<br>
+
+### 📊 Administrative Console & Dashboard
+![888echo Admin dashboard showing comment and user counts, the embed snippet, and a comments-per-day chart](docs/screenshots/admin-dashboard.png)
+
+*888echo Administrative Console — Overview metrics, embed code snippet, domain distribution, and 30-day volume.*
+
+<br>
+
+### 🛡️ Moderation Queue
+![888echo Moderation queue listing pending comments with author, body, metadata and per-row actions](docs/screenshots/admin-queue-pending.png)
+
+*Audit-grade moderation queue — pending/spam classification, batch approvals, reader reports.*
+
+<br>
+
+### ⚙️ System Settings & Dynamic Feature Toggles
+![888echo System Settings](docs/screenshots/admin-settings.png)
+
+*Fine-grained feature toggles, anti-spam thresholds, display rules, and moderation policies without redeployment.*
+
+<br>
+
+### 🔐 Zero-Trust Passkey Login Portal
+![888echo Zero-Trust Passkey Login Portal](docs/screenshots/admin-login.png)
+
+*Passwordless authentication with Touch ID, Face ID, Windows Hello, and Email 2FA OTP codes.*
+
+</div>
 
 More, including dark mode, mobile, and the rest of the admin UI:
 [`docs/screenshots.md`](docs/screenshots.md).
@@ -102,7 +127,7 @@ same Worker sends notifications:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/architecture-dark.webp">
-  <img alt="Garrul architecture: the reader's page loads the widget, which calls the Garrul Worker; the Worker uses D1, KV and the edge cache, verifies Turnstile, exchanges OAuth codes and optionally classifies spam; a cron handler reads the D1 notification queue and sends email via Resend and webhook retries" src="docs/screenshots/architecture-light.webp">
+  <img alt="888echo architecture: the reader's page loads the widget, which calls the 888echo Worker; the Worker uses D1, KV and the edge cache, verifies Turnstile, exchanges OAuth codes and optionally classifies spam; a cron handler reads the D1 notification queue and sends email via Resend and webhook retries" src="docs/screenshots/architecture-light.webp">
 </picture>
 
 The Worker, cron handler, D1, KV and edge cache run in your Cloudflare
