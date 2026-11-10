@@ -208,7 +208,7 @@ files ever disagree.
 ## License
 
 By contributing, you agree your contributions are licensed under
-[Apache 2.0](LICENSE), the same as the rest of the project.
+[GNU Affero General Public License v3.0 (AGPL-3.0)](LICENSE), the same as the rest of the project.
 
 ## Reporting security issues
 

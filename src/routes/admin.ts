@@ -709,6 +709,7 @@ admin.get("/comments/:id", async (c) => {
 		peekCachedLatestVersion(c.env),
 		listModeratorNotes(c.env.DB, "comment", id),
 	]);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	return c.html(
 		renderPage(
 			c,
@@ -719,6 +720,7 @@ admin.get("/comments/:id", async (c) => {
 				user.name,
 				notes,
 				user.id,
+				isZh,
 			),
 			user,
 			updateInfo,
@@ -792,11 +794,12 @@ admin.get("/users/:id", async (c) => {
 		peekCachedLatestVersion(c.env),
 		listModeratorNotes(c.env.DB, "user", id),
 	]);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	return c.html(
 		renderPage(
 			c,
 			detail.user.name,
-			renderUserDetail(detail, user, notes),
+			renderUserDetail(detail, user, notes, isZh),
 			user,
 			updateInfo,
 		),
@@ -1018,6 +1021,7 @@ admin.get("/telegram", async (c) => {
 		peekCachedLatestVersion(c.env),
 		getTelegramLinkByUser(c.env.DB, user.id),
 	]);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	return c.html(
 		renderPage(
 			c,
@@ -1027,7 +1031,7 @@ admin.get("/telegram", async (c) => {
 				webhookSecretSet: !!c.env.TELEGRAM_WEBHOOK_SECRET,
 				botUsername: c.env.TELEGRAM_BOT_USERNAME ?? null,
 				link: link ? { linked_at: link.linked_at, digest: link.digest } : null,
-			}),
+			}, isZh),
 			user,
 			updateInfo,
 		),
@@ -1085,11 +1089,12 @@ admin.get("/settings", async (c) => {
 		peekCachedLatestVersion(c.env),
 		loadSettings(c.env),
 	]);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	return c.html(
 		renderPage(
 			c,
 			"Settings",
-			renderSettings(c.env, flags, numbers, strings, texts),
+			renderSettings(c.env, flags, numbers, strings, texts, isZh),
 			user,
 			updateInfo,
 		),
@@ -1315,6 +1320,7 @@ admin.get("/webhooks", async (c) => {
 	const user = await requireAdmin(c);
 	if (user instanceof Response) return user;
 	const updateInfo = await peekCachedLatestVersion(c.env);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const endpoints = await listWebhookEndpoints(c.env.DB);
 	return c.html(
 		renderPage(c, 
@@ -1322,7 +1328,7 @@ admin.get("/webhooks", async (c) => {
 			renderWebhooksList(endpoints, {
 				active: isEnvShimActive(c.env, endpoints),
 				url: c.env.WEBHOOK_URL ?? "",
-			}),
+			}, isZh),
 			user,
 			updateInfo,
 		),
@@ -1332,10 +1338,11 @@ admin.get("/webhooks", async (c) => {
 admin.get("/webhooks/new", async (c) => {
 	const user = await requireAdmin(c);
 	if (user instanceof Response) return user;
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	const data: WebhookFormData = { endpoint: null, error: null };
 	return c.html(
-		renderPage(c, "Add webhook", renderWebhookForm(data), user, updateInfo),
+		renderPage(c, "Add webhook", renderWebhookForm(data, isZh), user, updateInfo),
 	);
 });
 
@@ -1350,10 +1357,11 @@ admin.get("/webhooks/:id", async (c) => {
 			404,
 		);
 	}
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	const data: WebhookFormData = { endpoint, error: null };
 	return c.html(
-		renderPage(c, "Edit webhook", renderWebhookForm(data), user, updateInfo),
+		renderPage(c, "Edit webhook", renderWebhookForm(data, isZh), user, updateInfo),
 	);
 });
 
@@ -1564,13 +1572,14 @@ admin.route("/", adminPasskeys);
 admin.get("/usage", async (c) => {
 	const user = await requireAdmin(c);
 	if (user instanceof Response) return user;
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const [updateInfo, byHost] = await Promise.all([
 		peekCachedLatestVersion(c.env),
 		adminCommentsByHost(c.env.DB),
 	]);
 	if (!isUsageConfigured(c.env)) {
 		return c.html(
-			renderPage(c, "Usage", renderUsageSetup(byHost), user, updateInfo),
+			renderPage(c, "Usage", renderUsageSetup(byHost, isZh), user, updateInfo),
 		);
 	}
 	// Verify the token before hitting GraphQL — surfaces revoked / wrong-
@@ -1582,17 +1591,17 @@ admin.get("/usage", async (c) => {
 	if (!tokenOk.ok || tokenOk.status !== "active") {
 		const errMsg = tokenOk.ok ? `status:${tokenOk.status}` : tokenOk.error;
 		return c.html(
-			renderPage(c, "Usage", renderUsageTokenError(errMsg, byHost), user, updateInfo),
+			renderPage(c, "Usage", renderUsageTokenError(errMsg, byHost, isZh), user, updateInfo),
 		);
 	}
 	try {
 		const snapshot = await fetchUsageSnapshot(c.env);
 		return c.html(
-			renderPage(c, "Usage", renderUsageDashboard(snapshot, byHost), user, updateInfo),
+			renderPage(c, "Usage", renderUsageDashboard(snapshot, byHost, isZh), user, updateInfo),
 		);
 	} catch (err) {
 		return c.html(
-			renderPage(c, "Usage", renderUsageTokenError(String(err), byHost), user, updateInfo),
+			renderPage(c, "Usage", renderUsageTokenError(String(err), byHost, isZh), user, updateInfo),
 		);
 	}
 });

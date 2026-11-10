@@ -305,7 +305,7 @@ ${navHtml}
         </button>
         <button class="icon-btn" @click="helpOpen = !helpOpen" aria-label="${isZh ? "鍵盤快捷鍵 (?)" : "Keyboard shortcuts (?)"}">?</button>
         <a href="/admin/logout" class="icon-btn" aria-label="${isZh ? "登出" : "Sign out"}" title="${isZh ? "登出管理後台" : "Sign out"}"
-           @click="if (!confirm('${isZh ? "確定要登出管理後台嗎？" : "確定要登出管理後台嗎？"}')) $event.preventDefault()">
+           @click="if (!confirm('${isZh ? "確定要登出管理後台嗎？" : "Sign out of the admin console?"}')) $event.preventDefault()">
           ${icon("logout")}
         </a>
       </div>

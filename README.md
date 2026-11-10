@@ -1,6 +1,6 @@
 # 888echo
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: AGPL 3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Version: v2.41.0](https://img.shields.io/badge/version-2.41.0-emerald.svg)](https://github.com/tbdavid2019/Garrul/releases)
 [![Passkey Ready](https://img.shields.io/badge/WebAuthn-Passkey%20Ready-purple.svg)](https://github.com/tbdavid2019/Garrul)
 [![Multi-Site Ready](https://img.shields.io/badge/Architecture-Multi--Site%20System-blue.svg)](https://github.com/tbdavid2019/Garrul)
@@ -265,4 +265,4 @@ layout are documented in [`CLAUDE.md`](CLAUDE.md).
 
 ## License
 
-Apache 2.0. See [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) and [NOTICE](NOTICE).

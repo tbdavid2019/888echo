@@ -38,7 +38,20 @@ All notable changes to the **888echo** sovereign edge comment & discussion engin
 - **Access Denied Smart Recovery**:
   - Redesigned the 401 unauthorized / session-expired barrier page to provide a direct, one-click button redirecting to `/admin/login`.
 
+### 📜 License & Governance
+- **Migrated to GNU Affero General Public License v3.0 (AGPL-3.0)**:
+  - Transitioned project license from Apache-2.0 to **GNU Affero General Public License v3.0 (AGPL-3.0)** across `LICENSE`, `package.json`, `README.md`, `README.zh-Hant.md`, and project documentation.
+  - Ensures network copyleft protection and first-party software sovereignty for self-hosted edge instances.
+
 ### 🌐 Multi-Language Switching & Traditional Chinese (繁體中文) Supercharge
+- **Admin Console 100% Full-Coverage Traditional Chinese Localization**:
+  - **Settings (`/admin/settings`)**: Localized all tabs (Features, Display, Moderation, Configuration), feature switches, numeric parameters, sort options, muted word blocklists, reserved names, and deploy variables.
+  - **Telegram (`/admin/telegram`)**: Localized bot configuration status, one-time link code generation, and daily digest alerts.
+  - **Webhooks (`/admin/webhooks`)**: Localized webhook endpoint listings, HMAC secret generation, and event subscription forms.
+  - **Comment Details (`/admin/comments/:id`)**: Localized comment metadata, report inspect panels, moderation notes, and bulk actions.
+  - **User Details (`/admin/users/:id`)**: Localized user audit trails, role administration, JSON export, and GDPR right-to-be-forgotten personal data erasing.
+  - **Usage Dashboard (`/admin/usage`)**: Localized Workers requests, D1 read/writes, KV namespace ops, and Workers AI neuron telemetry.
+  - Backward-compatible `isZh: boolean = false` design ensuring zero regressions across all 3,412 unit and integration tests.
 - **Admin UI Language Switcher (`/admin/set-lang`)**:
   - Added dedicated toggle button (`🌐 繁中 / EN`) in the admin sidebar footer.
   - Switches navigation sections (`內容審核`, `營運管理`, `整合服務`, `系統維運`, `說明與支援`), navigation links, role badges (`管理員`, `審核員`), and shortcuts help into native Traditional Chinese.

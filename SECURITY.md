@@ -50,7 +50,7 @@ version rather than an SLA:
 | Credit | You'll be credited in the advisory and the release notes unless you'd rather not be. Say either way. |
 
 There's no bug bounty. Nothing is for sale here and there's no budget —
-this is a hobby project under Apache 2.0.
+this is a project under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
 ## Supported versions
 

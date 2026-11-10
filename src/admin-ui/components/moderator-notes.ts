@@ -32,11 +32,13 @@ export type ModeratorNotesOptions = {
 	viewerId: string;
 	/** Admins can strike any note, not only their own. */
 	viewerIsAdmin: boolean;
+	isZh?: boolean;
 };
 
 const noteRow = (
 	n: ModeratorNoteWithAuthor,
 	canDelete: boolean,
+	isZh: boolean = false,
 ): string => `
 <li class="note">
   <div class="note-meta muted">
@@ -45,7 +47,7 @@ const noteRow = (
     ${
 			canDelete
 				? `<button type="button" class="btn bad note-del"
-              :disabled="busy" @click="remove(${jsLiteral(n.id)})">Delete</button>`
+              :disabled="busy" @click="remove(${jsLiteral(n.id)})">${isZh ? "刪除" : "Delete"}</button>`
 				: ""
 		}
   </div>
@@ -53,14 +55,19 @@ const noteRow = (
 </li>`;
 
 export const moderatorNotes = (o: ModeratorNotesOptions): string => {
+	const isZh = o.isZh ?? false;
 	const rows = o.notes
 		.map((n) =>
-			noteRow(n, o.viewerIsAdmin || n.author_id === o.viewerId),
+			noteRow(n, o.viewerIsAdmin || n.author_id === o.viewerId, isZh),
 		)
 		.join("");
 	const list = o.notes.length
 		? `<ul class="note-list">${rows}</ul>`
-		: `<p class="muted">No notes yet. Anything written here is visible to every moderator and to no one else.</p>`;
+		: `<p class="muted">${
+				isZh
+					? "尚無任何備忘筆記。此處內容僅全體審核員可見，其他任何人均無法存取。"
+					: "No notes yet. Anything written here is visible to every moderator and to no one else."
+			}</p>`;
 	return `
 <div class="card" x-data="{
   body: '',
@@ -77,8 +84,8 @@ export const moderatorNotes = (o: ModeratorNotesOptions): string => {
         body: this.body,
       }),
     }).then(r => {
-      if (!r.ok) throw new Error('Could not save the note: ' + r.status);
-      this.$dispatch('toast', { text: 'Note added' });
+      if (!r.ok) throw new Error('${isZh ? "無法儲存筆記: " : "Could not save the note: "}' + r.status);
+      this.$dispatch('toast', { text: '${isZh ? "筆記已新增" : "Note added"}' });
       setTimeout(() => location.reload(), 600);
     }).catch(e => {
       this.busy = false;
@@ -86,11 +93,11 @@ export const moderatorNotes = (o: ModeratorNotesOptions): string => {
     });
   },
   remove(id) {
-    if (this.busy || !confirm('Delete this note?')) return;
+    if (this.busy || !confirm(${jsLiteral(isZh ? "確定要刪除此筆記？" : "Delete this note?")})) return;
     this.busy = true;
     return fetch('/admin/api/notes/' + id, { method: 'DELETE' }).then(r => {
-      if (!r.ok) throw new Error('Could not delete the note: ' + r.status);
-      this.$dispatch('toast', { text: 'Note deleted' });
+      if (!r.ok) throw new Error('${isZh ? "無法刪除筆記: " : "Could not delete the note: "}' + r.status);
+      this.$dispatch('toast', { text: '${isZh ? "筆記已刪除" : "Note deleted"}' });
       setTimeout(() => location.reload(), 600);
     }).catch(e => {
       this.busy = false;
@@ -98,19 +105,22 @@ export const moderatorNotes = (o: ModeratorNotesOptions): string => {
     });
   }
 }">
-  <h3>Moderator notes (${o.notes.length})</h3>
+  <h3>${isZh ? `審核備忘筆記 (${o.notes.length})` : `Moderator notes (${o.notes.length})`}</h3>
   <p class="muted" style="margin:0 0 0.5rem">
-    Internal to the moderation team — never shown to the commenter, and plain
-    text, not markdown.
+    ${
+			isZh
+				? "僅限審核團隊內部檢視——絕不會顯示給留言者，為純文字格式而非 Markdown。"
+				: "Internal to the moderation team — never shown to the commenter, and plain text, not markdown."
+		}
   </p>
   ${list}
-  <label style="display:block;margin-top:0.5rem">Add a note<br>
+  <label style="display:block;margin-top:0.5rem">${isZh ? "新增筆記" : "Add a note"}<br>
     <textarea x-model="body" rows="3" maxlength="${NOTE_BODY_MAX}"
-              placeholder="Context for whoever picks this up next…"
+              placeholder="${isZh ? "為下一位接手審核者留下交接脈絡…" : "Context for whoever picks this up next…"}"
               style="width:100%;font-family:inherit"></textarea>
   </label>
   <p style="margin-top:0.5rem">
-    <button :disabled="busy || !body.trim()" @click="add()">Add note</button>
+    <button :disabled="busy || !body.trim()" @click="add()">${isZh ? "新增筆記" : "Add note"}</button>
   </p>
 </div>`;
 };

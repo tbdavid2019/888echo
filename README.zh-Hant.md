@@ -1,6 +1,6 @@
 # 888echo
 
-[![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![License: AGPL 3.0](https://img.shields.io/badge/License-AGPL_3.0-blue.svg)](LICENSE)
 [![Version: v2.41.0](https://img.shields.io/badge/version-2.41.0-emerald.svg)](https://github.com/tbdavid2019/Garrul/releases)
 [![Passkey Ready](https://img.shields.io/badge/WebAuthn-Passkey%20Ready-purple.svg)](https://github.com/tbdavid2019/Garrul)
 [![Multi-Site Ready](https://img.shields.io/badge/Architecture-Multi--Site%20System-blue.svg)](https://github.com/tbdavid2019/Garrul)
@@ -157,4 +157,4 @@ npm run dev               # 啟動本機伺服器：http://localhost:8787
 
 ## 📄 授權條款
 
-採用 **Apache License 2.0** 開源授權。詳見 [`LICENSE`](LICENSE) 與 [`NOTICE`](NOTICE)。
+採用 **GNU Affero General Public License v3.0 (AGPL-3.0)** 開源授權。詳見 [LICENSE](LICENSE) 與 [NOTICE](NOTICE)。

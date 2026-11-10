@@ -32,10 +32,10 @@ const auditStrip = (a: AuditRowWithAdmin | undefined): string => {
  * readers see: the replies may be hidden too, and this cheap count can't tell.
  * Empty string otherwise.
  */
-export const replyHint = (c: AdminComment): string => {
+export const replyHint = (c: AdminComment, isZh: boolean = false): string => {
 	const n = c.reply_count ?? 0;
 	return (c.status === "spam" || c.status === "pending") && n > 0
-		? ` <span class="pill" title="Direct replies to this comment, any status">↳ ${n} direct repl${n === 1 ? "y" : "ies"}</span>`
+		? ` <span class="pill" title="${isZh ? "此留言的直接回覆數 (任何狀態)" : "Direct replies to this comment, any status"}">↳ ${n} ${isZh ? "則直接回覆" : `direct repl${n === 1 ? "y" : "ies"}`}</span>`
 		: "";
 };
 
@@ -421,7 +421,7 @@ export const renderQueue = (
     :class="allIds[cursor] === ${jsLiteral(c.id)} ? 'row-cursor' : ''"
     @bulk-done.window="if ($event.detail.ids.includes(${jsLiteral(c.id)})) gone = true">
   <td class="bulk-cell"><input type="checkbox" :value="${jsLiteral(c.id)}" x-model="selected" :disabled="busy"></td>
-  <td><span class="pill ${c.status}">${c.status}</span>${reportBadge(reportCounts[c.id] ?? 0)}${replyHint(c)}${noteBadge(noteCounts.comment[c.id] ?? 0, "this comment")}</td>
+  <td><span class="pill ${c.status}">${isZh ? (tabNames[c.status] ?? c.status) : c.status}</span>${reportBadge(reportCounts[c.id] ?? 0)}${replyHint(c, isZh)}${noteBadge(noteCounts.comment[c.id] ?? 0, isZh ? "此留言" : "this comment")}</td>
   <td>${authorCell(c, noteCounts.user[c.user_id] ?? 0)}</td>
   <td class="score-cell" title="up / down">${scoreCell(c)}</td>
   <td class="meta-cell">${metaCell(c)}</td>
