@@ -266,8 +266,11 @@ ${renderUpdateBanner(updateInfo)}
 ${navHtml}
     </nav>
     <div class="sidebar-footer">
-      <span class="me">${escapeHtml(currentUser.name)} ${rolePill}</span>
-      <span class="footer-actions">
+      <div class="footer-user">
+        <span class="me" title="${escapeHtml(currentUser.name)}">${escapeHtml(currentUser.name)}</span>
+        ${rolePill}
+      </div>
+      <div class="footer-actions">
         <a href="/admin/set-lang?lang=${nextLang}&return_to=${encodeURIComponent(opts.activePath ?? '/admin')}"
            class="icon-btn"
            title="${isZh ? "切換為 English" : "切換為繁體中文"}"
@@ -285,7 +288,7 @@ ${navHtml}
            @click="if (!confirm('${isZh ? "確定要登出管理後台嗎？" : "確定要登出管理後台嗎？"}')) $event.preventDefault()">
           ${icon("logout")}
         </a>
-      </span>
+      </div>
     </div>
   </aside>
   <div class="content">

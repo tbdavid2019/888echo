@@ -105,11 +105,14 @@ a:hover { text-decoration: underline; }
 .nav-link:hover { background: var(--surface-2); text-decoration: none; }
 .nav-link.active { background: var(--accent-weak); color: var(--accent); font-weight: 600; }
 .nav-link.active .icon { color: var(--accent); }
-.sidebar-footer { display: flex; align-items: center; gap: 0.5rem;
-                  padding: 0.75rem 1.1rem; border-top: 1px solid var(--border); }
-.sidebar-footer .me { color: var(--muted); font-size: 0.85rem; flex: 1; min-width: 0;
-                      display: flex; align-items: center; gap: 0.4rem; }
-.footer-actions { display: flex; gap: 0.3rem; flex: 0 0 auto; }
+.sidebar-footer { display: flex; flex-direction: column; gap: 0.55rem;
+                  padding: 0.85rem 1.1rem; border-top: 1px solid var(--border); }
+.sidebar-footer .footer-user { display: flex; align-items: center; justify-content: space-between;
+                              width: 100%; min-width: 0; gap: 0.4rem; }
+.sidebar-footer .me { color: var(--text); font-size: 0.85rem; font-weight: 500; min-width: 0;
+                      display: flex; align-items: center; gap: 0.4rem; overflow: hidden;
+                      text-overflow: ellipsis; white-space: nowrap; }
+.footer-actions { display: flex; align-items: center; gap: 0.4rem; width: 100%; }
 .icon-btn { display: inline-flex; align-items: center; justify-content: center;
             min-width: 30px; height: 30px; padding: 0 0.4rem; background: transparent;
             border: 1px solid transparent; border-radius: var(--radius-sm); color: var(--muted); }
@@ -175,7 +178,8 @@ tbody tr:hover { background: var(--accent-weak); }
 .cid:hover { color: var(--text); text-decoration: underline; }
 .pill { display: inline-block; padding: 0.12rem 0.5rem; border-radius: 999px;
         font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em;
-        border: 1px solid transparent; background: var(--surface-2); color: var(--muted); }
+        border: 1px solid transparent; background: var(--surface-2); color: var(--muted);
+        white-space: nowrap; flex-shrink: 0; line-height: 1.4; }
 .pill.approved { color: var(--ok); background: var(--ok-weak); }
 .pill.pending { color: var(--warn); background: var(--warn-weak); }
 .pill.spam, .pill.deleted, .pill.banned { color: var(--bad); background: var(--bad-weak); }
