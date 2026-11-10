@@ -42,6 +42,12 @@ volume chart.
 
 ![Admin dashboard showing total/pending/spam comment counts and user count, the embed snippet, and a comments-per-day chart](screenshots/admin-dashboard.png)
 
+### Multi-site management
+
+Manage multiple distinct sites and domains under a single Worker deployment. Each site gets isolated slug namespaces, dynamic CORS allowlisting, and independent moderation policies.
+
+![Multi-site system management listing domains, policies, and post/comment counts](screenshots/admin-sites.png)
+
 ### Moderation queue
 
 The default view is everything awaiting a decision. Approve, spam, or delete

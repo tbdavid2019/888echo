@@ -3,6 +3,9 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Version: v2.41.0](https://img.shields.io/badge/version-2.41.0-emerald.svg)](https://github.com/tbdavid2019/Garrul/releases)
 [![Passkey Ready](https://img.shields.io/badge/WebAuthn-Passkey%20Ready-purple.svg)](https://github.com/tbdavid2019/Garrul)
+[![Multi-Site Ready](https://img.shields.io/badge/Architecture-Multi--Site%20System-blue.svg)](https://github.com/tbdavid2019/Garrul)
+
+**English** | [繁體中文](README.zh-Hant.md)
 
 **888echo** is a high-performance, sovereign edge comment & discussion engine built on Cloudflare
 Workers + D1 + KV + Turnstile. A core pillar of the 888 ecosystem (`888echo`, `888box`, `888a2a`, `888quant`).
@@ -12,6 +15,10 @@ Self-hosted, but without the operational friction: **no Docker containers, no VP
 no database server maintenance**. Zero OS patching, zero downtime worries, no manual TLS renewals,
 and Cloudflare maintains automatic point-in-time backups of D1 SQLite storage.
 
+- **System-Level Multi-Site Architecture**: Serve multiple distinct websites, domains, and subdomains
+  (e.g., blogs, news portals, podcasts, documentation) from a single Worker deployment. Features clean
+  slug namespacing, dynamic CORS & Origin authorization, site-scoped webhook dispatching, and a global
+  site-filtering switcher in the Admin Console.
 - **Threaded comments**: Markdown formatting, emoji reactions, edit/delete window, and
   chronological / top-voted sort readers can switch
 - **Zero-Trust Admin Login**: Passkey (WebAuthn / Touch ID / Face ID) passwordless authentication,
@@ -75,6 +82,10 @@ The admin dashboard, with counts at a glance, your embed snippet ready to
 copy, and 30-day comment volume:
 
 ![Admin dashboard showing comment and user counts, the embed snippet, and a comments-per-day chart](docs/screenshots/admin-dashboard.png)
+
+The multi-site management console, allowing you to manage distinct domains, configure site-level policies, and monitor post/comment volumes across all your properties:
+
+![888echo Multi-Site Management Console](docs/screenshots/admin-sites.png)
 
 The moderation queue, where comments are approved, marked spam or deleted
 inline:
