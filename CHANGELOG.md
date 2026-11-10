@@ -38,6 +38,18 @@ All notable changes to the **888echo** sovereign edge comment & discussion engin
 - **Access Denied Smart Recovery**:
   - Redesigned the 401 unauthorized / session-expired barrier page to provide a direct, one-click button redirecting to `/admin/login`.
 
+### 🌐 Multi-Language Switching & Traditional Chinese (繁體中文) Supercharge
+- **Admin UI Language Switcher (`/admin/set-lang`)**:
+  - Added dedicated toggle button (`🌐 繁中 / EN`) in the admin sidebar footer.
+  - Switches navigation sections (`內容審核`, `營運管理`, `整合服務`, `系統維運`, `說明與支援`), navigation links, role badges (`管理員`, `審核員`), and shortcuts help into native Traditional Chinese.
+  - Automatically remembers preference via `888echo_admin_lang` cookie and `Accept-Language` detection.
+- **Widget In-Place Language Switcher**:
+  - Added interactive language toggle (`🌐 繁體中文 / English`) directly in the comment widget footer.
+  - Allows site visitors to toggle language instantly without page reload, remembering their choice in `localStorage`.
+- **100% Traditional Chinese (`zh-Hant`) Localization Coverage**:
+  - Completed all 37 previously missing server strings in `src/i18n/zh-Hant.ts` (API validation errors, rate limit warnings, Turnstile hints, Telegram bot operator interactions).
+  - Both server (`84/84`) and widget (`120/120`) tables for `zh-Hant` now achieve full 100% translation coverage.
+
 ### 🔌 Seamless Embed Backward Compatibility
 - **Dual Container Target Support**:
   - `embed.js` now natively checks `document.getElementById("888echo") ?? document.getElementById("garrul")`.

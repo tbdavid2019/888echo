@@ -227,6 +227,18 @@ const wantsHtml = (c: Ctx): boolean => {
 // touching ~17 callsites.
 //
 // `opts` is for the per-page extras a route knows and this wrapper can't
+export const getAdminLocale = (c: Ctx): "zh-Hant" | "en" => {
+	const q = c.req.query("lang");
+	if (q === "zh-Hant" || q === "zh-TW" || q === "zh") return "zh-Hant";
+	if (q === "en") return "en";
+	const cookieHeader = c.req.header("cookie") ?? "";
+	const m = cookieHeader.match(/(?:^|;\s*)888echo_admin_lang=(zh-Hant|en)/);
+	if (m) return m[1] as "zh-Hant" | "en";
+	const accept = c.req.header("accept-language") ?? "";
+	if (accept.toLowerCase().startsWith("zh")) return "zh-Hant";
+	return "en";
+};
+
 // derive — currently only the page's own keyboard shortcuts. The derived
 // opts are spread last so a caller can't accidentally override them.
 const renderPage = (
@@ -235,10 +247,11 @@ const renderPage = (
 	body: string,
 	user: User,
 	updateInfo: UpdateInfo | null,
-	opts: Omit<LayoutOpts, "usage_link" | "activePath"> = {},
+	opts: Omit<LayoutOpts, "usage_link" | "activePath" | "locale"> = {},
 ): string =>
 	layout(title, body, user, updateInfo, {
 		...opts,
+		locale: getAdminLocale(c),
 		usage_link: isUsageConfigured(c.env),
 		activePath: c.req.path,
 	});
@@ -337,6 +350,18 @@ admin.get("/logout", async (c) => {
 admin.post("/logout", async (c) => {
 	await destroySession(c);
 	return c.redirect("/admin/login");
+});
+
+// Admin locale switcher route: sets 888echo_admin_lang cookie & redirects back
+admin.get("/set-lang", (c) => {
+	const lang = c.req.query("lang") === "en" ? "en" : "zh-Hant";
+	const returnTo = c.req.query("return_to") || "/admin";
+	const safeReturn = returnTo.startsWith("/admin") ? returnTo : "/admin";
+	c.header(
+		"Set-Cookie",
+		`888echo_admin_lang=${lang}; Path=/admin; Max-Age=31536000; SameSite=Lax; HttpOnly`,
+	);
+	return c.redirect(safeReturn, 302);
 });
 
 // The dashboard's seven aggregates, per D1 binding, for DASHBOARD_MEMO_MS.

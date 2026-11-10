@@ -1,14 +1,39 @@
 /**
- * Traditional Chinese server strings. Machine-seeded; awaiting native-speaker review.
- *
- * Reader-facing subscription pages, mail and feed entries are translated.
- * `err.*` is deliberately omitted so API errors continue to use the English
- * source strings. Telegram and admin surfaces are operator-facing and remain
- * English by design.
+ * Traditional Chinese server strings for 888echo.
+ * Fully localized for Taiwan, Hong Kong, and Macau.
  */
 import type { LocaleTable } from "./index";
 
 export const zhHant = {
+	// Validation / API errors
+	"err.body.required": "請輸入留言內容。",
+	"err.body.too_long": "留言內容過長（最多 {max} 個字元）。",
+	"err.post.required": "缺少文章識別碼。",
+	"err.post.invalid": "無效的文章識別碼。",
+	"err.parent.not_found": "找不到回覆的父留言。",
+	"err.parent.different_post": "回覆的留言屬於不同的文章。",
+	"err.parent.too_deep": "留言巢狀層級過深，請在較上層發表回覆。",
+	"err.name.required": "請輸入顯示名稱。",
+	"err.name.too_long": "顯示名稱過長（最多 {max} 個字元）。",
+	"err.name.reserved": "此名稱已保留，匿名留言無法使用，請更換名稱或登入。",
+	"err.turnstile.required": "安全驗證未完成，請重新整理頁面後再試。",
+	"err.turnstile.invalid": "安全驗證失敗，請重新整理頁面後再試。",
+	"err.ratelimit": "留言頻率過高，請稍候片刻再試。",
+	"err.honeypot": "留言已被系統拒絕。",
+	"err.origin.forbidden": "請求被攔截：來源不被允許。",
+	"err.session.expired": "登入階段已過期，請重新整理頁面後登入。",
+	"err.edit.window_expired": "編輯時限已過，無法再編輯此留言。",
+	"err.edit.not_author": "你只能編輯自己的留言。",
+	"err.delete.not_author": "你只能刪除自己的留言。",
+	"err.not_found": "找不到目標資源。",
+	"err.banned": "你的帳號已被封鎖。",
+	"err.staff.forbidden": "只有登入的工作人員能標記為官方回覆。",
+	"err.thread_closed": "這篇文章已關閉留言功能。",
+	"err.email.invalid": "請輸入有效的電子郵件地址。",
+	"err.comment.confirm_unavailable":
+		"目前暫時無法寄送電子郵件確認信，請稍後再試。",
+	"err.internal": "系統發生錯誤，請稍後再試。",
+
 	// Server-rendered UI strings
 	"ui.deleted": "[已刪除]",
 	"ui.subscribe.pending": "請查看收件匣以確認訂閱。",
@@ -44,9 +69,6 @@ export const zhHant = {
 	"email.digest.unsubscribe": "取消此討論串的訂閱",
 
 	// Comment inbox confirmation
-	"err.email.invalid": "請輸入有效的電子郵件地址。",
-	"err.comment.confirm_unavailable":
-		"目前暫時無法寄送電子郵件確認信，請稍後再試。",
 	"ui.comment.confirm_pending":
 		"確認信已寄送！請至電子信箱點擊確認連結，完成後留言將立即發佈（若未收到請檢查垃圾郵件匣）。",
 	"ui.comment.confirm_prompt": "確認要在「{title}」發布這則留言嗎？",
@@ -68,4 +90,24 @@ export const zhHant = {
 	// Atom feed
 	"feed.title": "「{title}」的留言",
 	"feed.entry_title": "{author} 發表了留言",
+
+	// Telegram operator bot
+	"telegram.not_linked":
+		"此 Telegram 帳號尚未綁定。請至管理後台 → Telegram 進行綁定。",
+	"telegram.not_authorized": "你的帳號沒有審核權限。",
+	"telegram.unknown_action": "未知或已過期的操作。",
+	"telegram.comment_not_found": "該留言已不存在。",
+	"telegram.action_applied": "✓ 已執行 {action}",
+	"telegram.reports_resolved": "✓ 已處理 {count} 則檢舉",
+	"telegram.author_banned": "✓ 已封鎖留言作者",
+	"telegram.ban_refused":
+		"無法封鎖：這是你自己的帳號，或為最後一位可用管理員。",
+	"telegram.link_ok":
+		"✅ 已成功綁定至 {name}。你將會收到管理員通知，並可直接在此審核留言。",
+	"telegram.link_invalid":
+		"綁定代碼無效或已過期，請在管理後台重新產生代碼。",
+	"telegram.link_user_missing": "綁定失敗：該管理員帳號已不存在。",
+	"telegram.ratelimited": "操作過於頻繁，請稍候片刻再試。",
+	"telegram.start_help":
+		"請輸入 /start &lt;code&gt; 並帶入管理後台產生的代碼來綁定管理員帳號。",
 } satisfies LocaleTable;

@@ -108,6 +108,8 @@ export const renderUpdateBanner = (info: UpdateInfo | null): string => {
 </div>`;
 };
 
+export type AdminLocale = "zh-Hant" | "en";
+
 export type LayoutOpts = {
 	usage_link?: boolean;
 	/** Request path of the current page, used to highlight the active nav link. */
@@ -119,6 +121,7 @@ export type LayoutOpts = {
 	 * page stopped handling.
 	 */
 	shortcuts?: ReadonlyArray<readonly [string, string]>;
+	locale?: AdminLocale;
 };
 
 // `j / k` renders as two <kbd>s, `Esc` as one: split on the separator the
@@ -136,12 +139,14 @@ export const layout = (
 	updateInfo: UpdateInfo | null,
 	opts: LayoutOpts = {},
 ): string => {
+	const isZh = opts.locale === "zh-Hant";
+	const nextLang = isZh ? "en" : "zh-Hant";
 	const isAdmin = currentUser.role === "admin";
 	const rolePill =
 		currentUser.role === "admin"
-			? '<span class="pill admin">admin</span>'
+			? `<span class="pill admin">${isZh ? "管理員" : "admin"}</span>`
 			: currentUser.role === "mod"
-				? '<span class="pill mod">mod</span>'
+				? `<span class="pill mod">${isZh ? "審核員" : "mod"}</span>`
 				: "";
 	// Sidebar nav, grouped into sections. Mods see only Moderation (plus the
 	// always-on About link) — every Manage/System surface requires admin
@@ -150,53 +155,53 @@ export const layout = (
 	// CF_API_TOKEN + CF_ACCOUNT_ID are configured (see opts.usage_link).
 	const manageLinks: NavLink[] = isAdmin
 		? [
-				{ href: "/admin/users", label: "Users", icon: "users" },
+				{ href: "/admin/users", label: isZh ? "使用者" : "Users", icon: "users" },
 				{
 					href: "/admin/subscriptions",
-					label: "Subscriptions",
+					label: isZh ? "郵件訂閱" : "Subscriptions",
 					icon: "subscriptions",
 				},
-				{ href: "/admin/passkeys", label: "Passkeys", icon: "key" },
+				{ href: "/admin/passkeys", label: isZh ? "Passkey 憑證" : "Passkeys", icon: "key" },
 			]
 		: [];
 	const integrationLinks: NavLink[] = isAdmin
 		? [
 				{ href: "/admin/webhooks", label: "Webhooks", icon: "webhook" },
-				{ href: "/admin/telegram", label: "Telegram", icon: "telegram" },
+				{ href: "/admin/telegram", label: isZh ? "Telegram 機器人" : "Telegram", icon: "telegram" },
 			]
 		: [];
 	const systemLinks: NavLink[] = isAdmin
 		? [
-				{ href: "/admin/audit", label: "Audit", icon: "audit" },
+				{ href: "/admin/audit", label: isZh ? "稽核日誌" : "Audit", icon: "audit" },
 				...(opts.usage_link
-					? [{ href: "/admin/usage", label: "Usage", icon: "usage" }]
+					? [{ href: "/admin/usage", label: isZh ? "用量統計" : "Usage", icon: "usage" }]
 					: []),
-				{ href: "/admin/operator", label: "Operator", icon: "operator" },
-				{ href: "/admin/settings", label: "Settings", icon: "settings" },
+				{ href: "/admin/operator", label: isZh ? "維運操作" : "Operator", icon: "operator" },
+				{ href: "/admin/settings", label: isZh ? "系統設定" : "Settings", icon: "settings" },
 			]
 		: [];
 	const navSections: NavSection[] = [
 		{
-			heading: "Moderation",
+			heading: isZh ? "內容審核" : "Moderation",
 			links: [
-				{ href: "/admin", label: "Dashboard", icon: "dashboard" },
-				{ href: "/admin/queue", label: "Queue", icon: "queue" },
-				{ href: "/admin/saved-replies", label: "Replies", icon: "reply" },
+				{ href: "/admin", label: isZh ? "控制台" : "Dashboard", icon: "dashboard" },
+				{ href: "/admin/queue", label: isZh ? "審核佇列" : "Queue", icon: "queue" },
+				{ href: "/admin/saved-replies", label: isZh ? "快捷回覆" : "Replies", icon: "reply" },
 			],
 		},
-		{ heading: "Manage", links: manageLinks },
-		{ heading: "Integrations", links: integrationLinks },
-		{ heading: "System", links: systemLinks },
+		{ heading: isZh ? "營運管理" : "Manage", links: manageLinks },
+		{ heading: isZh ? "整合服務" : "Integrations", links: integrationLinks },
+		{ heading: isZh ? "系統維運" : "System", links: systemLinks },
 		{
-			heading: "Help",
-			links: [{ href: "/admin/about", label: "About", icon: "about" }],
+			heading: isZh ? "說明與支援" : "Help",
+			links: [{ href: "/admin/about", label: isZh ? "關於 888echo" : "About", icon: "about" }],
 		},
 	];
 	const navHtml = navSections
 		.map((s) => renderNavSection(s, opts.activePath))
 		.join("\n");
 	const pageShortcuts = opts.shortcuts?.length
-		? `<h4>This page</h4>
+		? `<h4>${isZh ? "本頁快捷鍵" : "This page"}</h4>
   <dl>
     ${opts.shortcuts
 			.map(([keys, desc]) => `<dt>${kbdKeys(keys)}</dt><dd>${escapeHtml(desc)}</dd>`)
@@ -263,15 +268,21 @@ ${navHtml}
     <div class="sidebar-footer">
       <span class="me">${escapeHtml(currentUser.name)} ${rolePill}</span>
       <span class="footer-actions">
+        <a href="/admin/set-lang?lang=${nextLang}&return_to=${encodeURIComponent(opts.activePath ?? '/admin')}"
+           class="icon-btn"
+           title="${isZh ? "切換為 English" : "切換為繁體中文"}"
+           aria-label="${isZh ? "切換為 English" : "切換為繁體中文"}">
+          <span style="font-weight:700;font-size:12px;letter-spacing:0.5px;">${isZh ? "EN" : "繁中"}</span>
+        </a>
         <button class="icon-btn" @click="setTheme(theme === 'dark' ? 'light' : 'dark')"
-                aria-label="Toggle theme"
-                :aria-label="theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'">
+                aria-label="${isZh ? "切換主題模式" : "Toggle theme"}"
+                :aria-label="theme === 'dark' ? '${isZh ? "切換為淺色主題" : "Switch to light theme"}' : '${isZh ? "切換為深色主題" : "Switch to dark theme"}'">
           <span x-show="theme === 'dark'" x-cloak>${icon("sun")}</span>
           <span x-show="theme !== 'dark'" x-cloak>${icon("moon")}</span>
         </button>
-        <button class="icon-btn" @click="helpOpen = !helpOpen" aria-label="Keyboard shortcuts">?</button>
-        <a href="/admin/logout" class="icon-btn" aria-label="Sign out" title="登出管理後台 (Sign out)"
-           @click="if (!confirm('確定要登出管理後台嗎？')) $event.preventDefault()">
+        <button class="icon-btn" @click="helpOpen = !helpOpen" aria-label="${isZh ? "鍵盤快捷鍵 (?)" : "Keyboard shortcuts (?)"}">?</button>
+        <a href="/admin/logout" class="icon-btn" aria-label="${isZh ? "登出" : "Sign out"}" title="${isZh ? "登出管理後台" : "Sign out"}"
+           @click="if (!confirm('${isZh ? "確定要登出管理後台嗎？" : "確定要登出管理後台嗎？"}')) $event.preventDefault()">
           ${icon("logout")}
         </a>
       </span>
@@ -294,12 +305,12 @@ ${body}
     <div :class="'toast ' + t.kind" x-text="t.text"></div>
   </template>
 </div>
-<div class="help-popover" x-show="helpOpen" x-cloak @click.away="helpOpen = false" role="dialog" aria-label="Keyboard shortcuts">
-  <h4 style="margin-top:0">Shortcuts</h4>
+<div class="help-popover" x-show="helpOpen" x-cloak @click.away="helpOpen = false" role="dialog" aria-label="${isZh ? '鍵盤快捷鍵' : 'Keyboard shortcuts'}">
+  <h4 style="margin-top:0">${isZh ? "全域快捷鍵" : "Shortcuts"}</h4>
   <dl>
-    <dt><kbd>/</kbd></dt><dd>Focus search</dd>
-    <dt><kbd>?</kbd></dt><dd>Toggle this help</dd>
-    <dt><kbd>Esc</kbd></dt><dd>Close help</dd>
+    <dt><kbd>/</kbd></dt><dd>${isZh ? "快速搜尋" : "Focus search"}</dd>
+    <dt><kbd>?</kbd></dt><dd>${isZh ? "開啟/關閉快捷鍵提示" : "Toggle this help"}</dd>
+    <dt><kbd>Esc</kbd></dt><dd>${isZh ? "關閉對話框" : "Close help"}</dd>
   </dl>
   ${pageShortcuts}
 </div>

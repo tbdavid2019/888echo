@@ -3332,11 +3332,14 @@ const init = () => {
 	const apiBase = host.dataset.api ?? SCRIPT_ORIGIN ?? window.location.origin;
 
 	applyDirection(host);
-	// Locale is a property of the site, not of the reader: data-lang is what the
-	// operator chose, <html lang> is what their theme claims. Accept-Language and
-	// navigator.language are deliberately never consulted — a German comment box
-	// under English prose reads as broken, not helpful.
-	langExplicit = host.dataset.lang ?? "";
+	// Locale is a property of the site, but readers can also switch language
+	// interactively; local preference wins when explicitly selected.
+	try {
+		const storedLang = localStorage.getItem("888echo:lang");
+		langExplicit = storedLang || host.dataset.lang || "";
+	} catch {
+		langExplicit = host.dataset.lang ?? "";
+	}
 	langHint = document.documentElement.lang;
 
 	const root = host.attachShadow({ mode: "open" });
@@ -4288,6 +4291,25 @@ const loadOnce = async (
 		link.textContent = "888echo";
 		const [beforeLink, afterLink] = sAround("w.powered_by", "link");
 		attr.append(beforeLink, link, afterLink);
+
+		const langBtn = document.createElement("button");
+		langBtn.type = "button";
+		langBtn.className = "gr-lang-switch";
+		const isZh = locale.toLowerCase().startsWith("zh");
+		langBtn.textContent = isZh ? "English" : "繁體中文";
+		langBtn.title = isZh ? "Switch language to English" : "切換語言為繁體中文";
+		langBtn.style.cssText =
+			"background:transparent;border:none;cursor:pointer;color:inherit;font:inherit;margin-inline-start:0.5rem;padding:0;text-decoration:underline;opacity:0.85;";
+		langBtn.addEventListener("click", () => {
+			const targetLang = isZh ? "en" : "zh-Hant";
+			try {
+				localStorage.setItem("888echo:lang", targetLang);
+			} catch {}
+			langExplicit = targetLang;
+			void load(root, slug, apiBase, host);
+		});
+		attr.append(" · ", langBtn);
+
 		wrap.appendChild(attr);
 	}
 
