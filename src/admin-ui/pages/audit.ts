@@ -28,12 +28,12 @@ const queryString = (f: AuditFilters): string => {
 const formatTs = (ts: number): string =>
 	new Date(ts).toISOString().slice(0, 16).replace("T", " ");
 
-const targetLink = (kind: string, id: string | null): string => {
+const targetLink = (kind: string, id: string | null, isZh: boolean = false): string => {
 	if (!id) return "—";
 	if (kind === "comment")
-		return `<a href="/admin/comments/${escapeHtml(id)}">comment <code>${escapeHtml(id.slice(0, 8))}</code></a>`;
+		return `<a href="/admin/comments/${escapeHtml(id)}">${isZh ? "留言" : "comment"} <code>${escapeHtml(id.slice(0, 8))}</code></a>`;
 	if (kind === "user")
-		return `<a href="/admin/users/${escapeHtml(id)}">user <code>${escapeHtml(id.slice(0, 8))}</code></a>`;
+		return `<a href="/admin/users/${escapeHtml(id)}">${isZh ? "使用者" : "user"} <code>${escapeHtml(id.slice(0, 8))}</code></a>`;
 	return `<code>${escapeHtml(kind)}:${escapeHtml(id.slice(0, 8))}</code>`;
 };
 
@@ -43,17 +43,18 @@ export const renderAudit = (
 	nextCursor: string | null,
 	actions: ReadonlyArray<AdminAction>,
 	hosts: string[] = [],
+	isZh: boolean = false,
 ): string => {
 	const actionOptions = ["", ...actions]
 		.map(
 			(a) =>
-				`<option value="${escapeHtml(a)}"${a === filters.action ? " selected" : ""}>${a || "any action"}</option>`,
+				`<option value="${escapeHtml(a)}"${a === filters.action ? " selected" : ""}>${a || (isZh ? "所有操作" : "any action")}</option>`,
 		)
 		.join("");
 	const kindOptions = ["", "comment", "user", "subscription", "system"]
 		.map(
 			(k) =>
-				`<option value="${escapeHtml(k)}"${k === filters.target_kind ? " selected" : ""}>${k || "any kind"}</option>`,
+				`<option value="${escapeHtml(k)}"${k === filters.target_kind ? " selected" : ""}>${k || (isZh ? "所有類型" : "any kind")}</option>`,
 		)
 		.join("");
 
@@ -68,45 +69,51 @@ export const renderAudit = (
   <td><span class="pill">${escapeHtml(r.action)}</span></td>
   <td>${escapeHtml(r.admin_name ?? r.admin_id)}</td>
   <td>${escapeHtml(r.target_kind)}</td>
-  <td>${targetLink(r.target_kind, r.target_id)}</td>
+  <td>${targetLink(r.target_kind, r.target_id, isZh)}</td>
   <td class="muted">${escapeHtml(r.reason ?? "")}</td>
   <td class="muted" style="font-size:0.75rem">${meta}</td>
 </tr>`;
 					},
 				)
 				.join("")
-		: `<tr><td colspan="7" class="muted">No audit rows.</td></tr>`;
+		: `<tr><td colspan="7" class="muted">${isZh ? "無稽核紀錄。" : "No audit rows."}</td></tr>`;
 
 	const qs = queryString(filters);
 	const nextHref = nextCursor
 		? `/admin/audit${qs}${qs ? "&" : "?"}before=${encodeURIComponent(nextCursor)}`
 		: null;
 	const next = nextHref
-		? `<a href="${nextHref}">Next →</a>`
-		: '<span class="muted">end</span>';
+		? `<a href="${nextHref}">${isZh ? "下一頁 →" : "Next →"}</a>`
+		: `<span class="muted">${isZh ? "已到底部" : "end"}</span>`;
 
 	const hostHelper = filters.host
-		? `<span class="muted" style="font-size:0.85em">narrows to comment actions on this domain</span>`
+		? `<span class="muted" style="font-size:0.85em">${isZh ? "僅限此網域之留言操作" : "narrows to comment actions on this domain"}</span>`
 		: "";
 
 	return `
 <form class="filter-bar queue-filter" method="get" action="/admin/audit">
-  <input type="text" name="admin_id" placeholder="admin id" value="${escapeHtml(filters.admin_id)}">
+  <input type="text" name="admin_id" placeholder="${isZh ? "管理員 ID" : "admin id"}" value="${escapeHtml(filters.admin_id)}">
   <select name="action">${actionOptions}</select>
   <select name="target_kind">${kindOptions}</select>
-  <input type="text" name="target_id" placeholder="target id" value="${escapeHtml(filters.target_id)}">
+  <input type="text" name="target_id" placeholder="${isZh ? "目標 ID" : "target id"}" value="${escapeHtml(filters.target_id)}">
   ${renderHostFilter({ hosts, selected: filters.host })}
   ${hostHelper}
   <input type="date" name="from" value="${escapeHtml(filters.from)}" title="from (UTC)">
   <input type="date" name="to" value="${escapeHtml(filters.to)}" title="to (UTC, inclusive)">
-  <button type="submit">Filter</button>
-  <a href="/admin/audit" class="muted">clear</a>
+  <button type="submit">${isZh ? "篩選" : "Filter"}</button>
+  <a href="/admin/audit" class="muted">${isZh ? "清除" : "clear"}</a>
 </form>
 
 <div class="card">
   <table>
     <thead><tr>
-      <th>When</th><th>Action</th><th>Admin</th><th>Kind</th><th>Target</th><th>Reason</th><th>Meta</th>
+      <th>${isZh ? "時間" : "When"}</th>
+      <th>${isZh ? "操作" : "Action"}</th>
+      <th>${isZh ? "管理員" : "Admin"}</th>
+      <th>${isZh ? "類別" : "Kind"}</th>
+      <th>${isZh ? "目標" : "Target"}</th>
+      <th>${isZh ? "事由" : "Reason"}</th>
+      <th>${isZh ? "詳細" : "Meta"}</th>
     </tr></thead>
     <tbody>${trs}</tbody>
   </table>

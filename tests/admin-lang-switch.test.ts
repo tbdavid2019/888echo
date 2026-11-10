@@ -1,6 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { layout } from "../src/admin-ui/layout";
 import { getAdminLocale } from "../src/routes/admin";
+import { renderDashboard } from "../src/admin-ui/pages/dashboard";
+import { renderOperator } from "../src/admin-ui/pages/operator";
 import type { User } from "../src/db/queries";
 
 const makeUser = (role: "admin" | "mod"): User => ({
@@ -94,5 +96,56 @@ describe("Admin UI multi-language switcher", () => {
 
 		// 4. Default fallback is en
 		expect(getAdminLocale(makeCtx({}))).toBe("en");
+	});
+
+	it("renders Dashboard and Operator pages in thorough Traditional Chinese when isZh=true", () => {
+		const stats = {
+			total_comments: 5,
+			pending_comments: 0,
+			spam_comments: 0,
+			total_users: 2,
+			banned_users: 0,
+		};
+		const dashHtml = renderDashboard(
+			{
+				stats,
+				timeline: [],
+				top_posts: [],
+				top_commenters: [],
+				oldest_pending: null,
+				spam_rate: { total: 0, spam: 0 },
+				by_host: [],
+			},
+			{} as any,
+			{} as any,
+			{} as any,
+			true, // isZh
+		);
+
+		expect(dashHtml).toContain("總覽概況");
+		expect(dashHtml).toContain("留言總數");
+		expect(dashHtml).toContain("待審核");
+		expect(dashHtml).toContain("垃圾訊息");
+		expect(dashHtml).toContain("嵌入至您的網站");
+		expect(dashHtml).toContain("每日留言趨勢 (過去 30 天)");
+		expect(dashHtml).toContain("快捷操作");
+		expect(dashHtml).toContain("各網域留言分佈");
+
+		const opHtml = renderOperator(
+			{
+				rerender: { current_version: 3, up_to_date: 5, stale: 0, oldest_version: null },
+				retention: { enabled: false, retention_days: 0, comments_total: 5, ghosts_total: 10, comments_pending: 0, reports_pending: 0 },
+				audit_retention: { enabled: false, retention_days: 0, total: 3, oldest: 1762700000000, pending: 0 },
+				seed_demo_allowed: false,
+			},
+			true, // isZh
+		);
+
+		expect(opHtml).toContain("重新渲染留言");
+		expect(opHtml).toContain("IP 雜湊保留政策");
+		expect(opHtml).toContain("稽核日誌保留政策");
+		expect(opHtml).toContain("匯出站台資料");
+		expect(opHtml).toContain("下載 JSON 備份");
+		expect(opHtml).toContain("下載 CSV 檔案");
 	});
 });

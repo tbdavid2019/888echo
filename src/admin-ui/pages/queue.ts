@@ -88,11 +88,21 @@ export const QUEUE_SHORTCUTS: ReadonlyArray<readonly [string, string]> = [
 
 // Same keys the help popover lists, spelled out where the moderating
 // happens — a shortcut nobody knows about is a shortcut nobody uses.
-const shortcutStrip = (): string =>
-	`<p class="muted shortcut-strip">${QUEUE_SHORTCUTS.map(
+const shortcutStrip = (isZh: boolean = false): string => {
+	const shortcutsZh: ReadonlyArray<readonly [string, string]> = [
+		["j / k", "移動游標"],
+		["a", "核准所選留言"],
+		["s", "標為垃圾訊息"],
+		["d", "刪除所選留言"],
+		["r", "快速回覆"],
+		["Esc", "取消選取"],
+	];
+	const list = isZh ? shortcutsZh : QUEUE_SHORTCUTS;
+	return `<p class="muted shortcut-strip">${list.map(
 		([keys, desc]) =>
 			`<span>${kbdKeys(keys)} ${escapeHtml(desc.toLowerCase())}</span>`,
 	).join(" · ")}</p>`;
+};
 
 export type QueueFilters = {
 	status: CommentStatus | "all";
@@ -249,16 +259,29 @@ export const rowActionToasts = (): Record<string, Record<string, string>> =>
 		]),
 	);
 
-const actionButtons = (c: AdminComment): string => {
+const actionButtons = (c: AdminComment, isZh: boolean = false): string => {
 	const parts: string[] = ROW_ACTIONS[c.status].map(
-		({ action, label, toast }) =>
-			`<button :disabled="busy"${action === "approve" ? "" : ' class="bad"'} @click="${rowAct(c.id, action, toast)}">${label}</button>`,
+		({ action, label, toast }) => {
+			let zhLabel = label;
+			let zhToast = toast;
+			if (action === "approve") {
+				zhLabel = label === "Restore" ? "還原" : "核准";
+				zhToast = label === "Restore" ? "已還原" : "已核准";
+			} else if (action === "spam") {
+				zhLabel = "垃圾";
+				zhToast = "已標為垃圾";
+			} else if (action === "delete") {
+				zhLabel = "刪除";
+				zhToast = "已刪除";
+			}
+			return `<button :disabled="busy"${action === "approve" ? "" : ' class="bad"'} @click="${rowAct(c.id, action, isZh ? zhToast : toast)}">${isZh ? zhLabel : label}</button>`;
+		},
 	);
 	// Reply opens the free-text composer — mods only see it on
 	// approved/pending comments. No point replying to deleted/spam.
 	if (c.status !== "deleted" && c.status !== "spam") {
 		parts.push(
-			`<button :disabled="busy" @click="${openReply(c.id)}">Reply</button>`,
+			`<button :disabled="busy" @click="${openReply(c.id)}">${isZh ? "回覆" : "Reply"}</button>`,
 		);
 	}
 	// Pin lives outside ROW_ACTIONS on purpose: that table is status-keyed and
@@ -266,8 +289,9 @@ const actionButtons = (c: AdminComment): string => {
 	// must stay put. Reload so the label flips.
 	if (c.status === "approved" && c.parent_id === null) {
 		const verb = c.pinned_at != null ? "unpin" : "pin";
+		const verbLabel = verb === "pin" ? (isZh ? "置頂" : "Pin") : (isZh ? "取消置頂" : "Unpin");
 		parts.push(
-			`<button :disabled="busy" @click="busy=true; act(${jsLiteral(c.id)},${jsLiteral(verb)}).then(()=>location.reload()).catch(e=>$dispatch('toast',{text:e.message||'Action failed',kind:'bad'})).finally(()=>busy=false)">${verb === "pin" ? "Pin" : "Unpin"}</button>`,
+			`<button :disabled="busy" @click="busy=true; act(${jsLiteral(c.id)},${jsLiteral(verb)}).then(()=>location.reload()).catch(e=>$dispatch('toast',{text:e.message||'Action failed',kind:'bad'})).finally(()=>busy=false)">${verbLabel}</button>`,
 		);
 	}
 	return parts.join("");
@@ -290,7 +314,25 @@ export const renderQueue = (
 	/** Signed-in moderator's display name, shown as the reply composer's identity. */
 	modName = "",
 	noteCounts: QueueNoteCounts = { comment: {}, user: {} },
+	isZh: boolean = false,
 ): string => {
+	const tabNames: Record<string, string> = isZh
+		? {
+				all: "全部",
+				approved: "已核准",
+				pending: "待審核",
+				spam: "垃圾訊息",
+				deleted: "已刪除",
+				reported: "被檢舉",
+			}
+		: {
+				all: "all",
+				approved: "approved",
+				pending: "pending",
+				spam: "spam",
+				deleted: "deleted",
+				reported: "reported",
+			};
 	const statusTabs = ["all", "approved", "pending", "spam", "deleted"]
 		.map((s) => {
 			// Status tabs preserve every other active filter — clicking
@@ -302,12 +344,12 @@ export const renderQueue = (
 			};
 			const href = `/admin/queue${queryString(tabFilters)}`;
 			const active = !filters.reported && s === filters.status;
-			return `<a href="${href}" ${active ? 'style="font-weight:600"' : ""}>${s}</a>`;
+			return `<a href="${href}" ${active ? 'style="font-weight:600"' : ""}>${tabNames[s] ?? s}</a>`;
 		})
 		.join(" · ");
 	// Cross-status "reported" tab — its own filter dimension, not a status.
 	const reportedHref = `/admin/queue${queryString({ ...filters, reported: true })}`;
-	const reportedTab = `<a href="${reportedHref}" ${filters.reported ? 'style="font-weight:600"' : ""}>reported</a>`;
+	const reportedTab = `<a href="${reportedHref}" ${filters.reported ? 'style="font-weight:600"' : ""}>${tabNames.reported}</a>`;
 	const tabs = `${statusTabs} · ${reportedTab}`;
 
 	const hasFilters =
@@ -331,14 +373,14 @@ export const renderQueue = (
 	const filterBar = `
 <form class="filter-bar queue-filter" method="get" action="/admin/queue">
   ${tabHidden}
-  <input type="text" name="q" placeholder="search body" value="${escapeHtml(filters.q)}">
-  <input type="text" name="post_slug" placeholder="post slug" value="${escapeHtml(filters.post_slug)}">
+  <input type="text" name="q" placeholder="${isZh ? "搜尋留言內容" : "search body"}" value="${escapeHtml(filters.q)}">
+  <input type="text" name="post_slug" placeholder="${isZh ? "文章代碼 Slug" : "post slug"}" value="${escapeHtml(filters.post_slug)}">
   ${renderHostFilter({ hosts, selected: filters.host })}
   <input type="date" name="from" value="${escapeHtml(filters.from)}" title="from (UTC)">
   <input type="date" name="to" value="${escapeHtml(filters.to)}" title="to (UTC, inclusive)">
-  ${filters.user_id ? `<input type="hidden" name="user_id" value="${escapeHtml(filters.user_id)}"><span class="muted">user: <code>${escapeHtml(filters.user_id)}</code></span>` : ""}
-  <button type="submit">Filter</button>
-  ${hasFilters ? `<a href="${clearHref}" class="muted">clear</a>` : ""}
+  ${filters.user_id ? `<input type="hidden" name="user_id" value="${escapeHtml(filters.user_id)}"><span class="muted">${isZh ? "使用者" : "user"}: <code>${escapeHtml(filters.user_id)}</code></span>` : ""}
+  <button type="submit">${isZh ? "篩選" : "Filter"}</button>
+  ${hasFilters ? `<a href="${clearHref}" class="muted">${isZh ? "清除" : "clear"}</a>` : ""}
 </form>`;
 
 	// Per-post freeze toggle. Only meaningful when the queue is scoped to one
@@ -358,15 +400,15 @@ export const renderQueue = (
       if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.error || ('Failed: ' + r.status)); }
       const j = await r.json();
       this.closed = !!j.closed;
-      this.$dispatch('toast', { text: this.closed ? 'Comments closed for this thread' : 'Comments reopened for this thread' });
+      this.$dispatch('toast', { text: this.closed ? '${isZh ? "此討論串已關閉留言" : "Comments closed for this thread"}' : '${isZh ? "此討論串已重新開放留言" : "Comments reopened for this thread"}' });
     } catch (e) {
       this.$dispatch('toast', { text: e.message || 'Action failed', kind: 'bad' });
     } finally { this.busy = false; }
   }
 }">
-  <span class="muted">thread <code>${escapeHtml(post.slug)}</code>:</span>
-  <span class="pill" :class="closed ? 'spam' : 'approved'" x-text="closed ? 'closed' : 'open'"></span>
-  <button :disabled="busy" @click="toggle()" x-text="closed ? 'Open comments' : 'Close comments'"></button>
+  <span class="muted">${isZh ? "討論串" : "thread"} <code>${escapeHtml(post.slug)}</code>:</span>
+  <span class="pill" :class="closed ? 'spam' : 'approved'" x-text="closed ? '${isZh ? "已關閉" : "closed"}' : '${isZh ? "開放中" : "open"}'"></span>
+  <button :disabled="busy" @click="toggle()" x-text="closed ? '${isZh ? "開放留言" : "Open comments"}' : '${isZh ? "關閉留言" : "Close comments"}'"></button>
 </div>`
 		: "";
 
@@ -387,22 +429,13 @@ export const renderQueue = (
     <div class="md">${resanitizeBodyHtml(c.body_html)}</div>
     ${auditStrip(latestAudit.get(c.id))}
   </td>
-  <td class="actions">${actionButtons(c)}</td>
+  <td class="actions">${actionButtons(c, isZh)}</td>
 </tr>`,
 				)
 				.join("")
-		: `<tr><td colspan="7" class="muted">No comments match.</td></tr>`;
+		: `<tr><td colspan="7" class="muted">${isZh ? "沒有符合條件的留言。" : "No comments match."}</td></tr>`;
 
 	const allIds = rows.map((r) => r.id);
-	// Saved-reply variable context per row: the author's display name and the
-	// post's human title (slug when the crawler never gave us one). Kept as a
-	// map keyed by comment id so both the Reply button and the keyboard
-	// shortcut resolve it the same way.
-	//
-	// Built literal-by-literal through jsLiteral rather than JSON.stringify'd
-	// whole: unlike `allIds` these values are user-authored (a display name, a
-	// page <title>), and JSON.stringify leaves `<`, `>` and U+2028/U+2029 raw
-	// inside what becomes executable JS. See tests/admin-js-context-escaping.
 	const rowCtx = `{${rows
 		.map(
 			(r) =>
@@ -415,14 +448,14 @@ export const renderQueue = (
 		? `/admin/queue${qs}${qs ? "&" : "?"}before=${encodeURIComponent(nextCursor)}`
 		: null;
 	const next = nextHref
-		? `<a href="${nextHref}">Next →</a>`
-		: '<span class="muted">end</span>';
+		? `<a href="${nextHref}">${isZh ? "下一頁 →" : "Next →"}</a>`
+		: `<span class="muted">${isZh ? "已到底部" : "end"}</span>`;
 
 	return `
-<div class="filter-bar"><span class="muted">filter:</span> ${tabs}</div>
+<div class="filter-bar"><span class="muted">${isZh ? "狀態篩選：" : "filter:"}</span> ${tabs}</div>
 ${filterBar}
 ${lifecycleBar}
-${shortcutStrip()}
+${shortcutStrip(isZh)}
 <div x-data="{ open: false, commentId: null, authorName: '', postTitle: '' }"
 @open-reply.window="open = true; commentId = $event.detail.id; authorName = $event.detail.name || ''; postTitle = $event.detail.post || '';"
 @reply-posted="open = false"

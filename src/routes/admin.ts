@@ -272,6 +272,27 @@ export const getActiveSiteId = (c: Ctx): string | null => {
 	}
 };
 
+const TITLE_MAP_ZH: Record<string, string> = {
+	Dashboard: "控制台",
+	Queue: "審核佇列",
+	Users: "使用者",
+	Audit: "稽核日誌",
+	Subscriptions: "郵件訂閱",
+	"Saved replies": "快捷回覆",
+	"New saved reply": "新增快捷回覆",
+	"Edit saved reply": "編輯快捷回覆",
+	Operator: "維運操作",
+	Settings: "系統設定",
+	About: "關於 888echo",
+	Webhooks: "Webhooks 整合",
+	"Add webhook": "新增 Webhook",
+	"Edit webhook": "編輯 Webhook",
+	Passkeys: "Passkey 憑證",
+	Usage: "用量統計",
+	Telegram: "Telegram 機器人",
+	Sites: "站台管理",
+};
+
 // derive — currently only the page's own keyboard shortcuts. The derived
 // opts are spread last so a caller can't accidentally override them.
 const renderPage = (
@@ -282,11 +303,17 @@ const renderPage = (
 	updateInfo: UpdateInfo | null,
 	opts: Omit<LayoutOpts, "usage_link" | "activePath" | "locale"> = {},
 ): string => {
+	const locale = getAdminLocale(c);
+	const isZh = locale === "zh-Hant";
+	let localizedTitle = isZh ? (TITLE_MAP_ZH[title] ?? title) : title;
+	if (isZh && title.startsWith("Comment ")) {
+		localizedTitle = title.replace(/^Comment /, "留言 ");
+	}
 	const sites = (c.get("sites") as Site[] | undefined) ?? getCachedSitesSync(c.env.DB);
 	const activeSiteId = getActiveSiteId(c);
-	return layout(title, body, user, updateInfo, {
+	return layout(localizedTitle, body, user, updateInfo, {
 		...opts,
-		locale: getAdminLocale(c),
+		locale,
 		usage_link: isUsageConfigured(c.env),
 		activePath: c.req.path,
 		sites,
@@ -513,11 +540,13 @@ admin.get("/", async (c) => {
 		// has to read them the same way evaluateSpam does.
 		loadSettings(c.env),
 	]);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const body = renderDashboard(
 		data,
 		c.env,
 		flags,
 		numbers,
+		isZh,
 	);
 	return c.html(renderPage(c, "Dashboard", body, user, updateInfo));
 });
@@ -645,6 +674,7 @@ admin.get("/queue", async (c) => {
 		host,
 		reported,
 	};
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	return c.html(
 		renderPage(c,
 			"Queue",
@@ -658,6 +688,7 @@ admin.get("/queue", async (c) => {
 				reportCounts,
 				user.name,
 				{ comment: commentNoteCounts, user: userNoteCounts },
+				isZh,
 			),
 			user,
 			updateInfo,
@@ -719,9 +750,10 @@ admin.get("/users", async (c) => {
 	const last = trimmed[trimmed.length - 1];
 	const nextCursor =
 		rows.length > 50 && last ? `${last.created_at}|${last.id}` : null;
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	return c.html(
-		renderPage(c, "Users", renderUsers(trimmed, q, nextCursor), user, updateInfo),
+		renderPage(c, "Users", renderUsers(trimmed, q, nextCursor, isZh), user, updateInfo),
 	);
 });
 
@@ -846,11 +878,12 @@ admin.get("/audit", async (c) => {
 		to: toRaw ?? "",
 		host,
 	};
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	return c.html(
 		renderPage(c,
 			"Audit",
-			renderAudit(trimmed, filters, nextCursor, ADMIN_ACTIONS, hosts),
+			renderAudit(trimmed, filters, nextCursor, ADMIN_ACTIONS, hosts, isZh),
 			user,
 			updateInfo,
 		),
@@ -915,11 +948,12 @@ admin.get("/subscriptions", async (c) => {
 		host,
 	};
 	const hosts = await adminListHosts(c.env.DB);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	return c.html(
 		renderPage(c,
 			"Subscriptions",
-			renderSubscriptions(rows, filters, nextCursor, hosts),
+			renderSubscriptions(rows, filters, nextCursor, hosts, isZh),
 			user,
 			updateInfo,
 		),
@@ -951,6 +985,7 @@ admin.get("/operator", async (c) => {
 		audit_log_retention_days,
 		now,
 	);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	return c.html(
 		renderPage(c,
@@ -960,7 +995,7 @@ admin.get("/operator", async (c) => {
 				retention,
 				audit_retention: auditRetention,
 				seed_demo_allowed: isSeedDemoAllowed(c.env),
-			}),
+			}, isZh),
 			user,
 			updateInfo,
 		),
@@ -1259,7 +1294,8 @@ admin.get("/about", async (c) => {
 		peekCachedLatestVersion(c.env),
 		peekCachedRecentReleases(c.env),
 	]);
-	return c.html(renderPage(c, "About", renderAbout(releases), user, updateInfo));
+	const isZh = getAdminLocale(c) === "zh-Hant";
+	return c.html(renderPage(c, "About", renderAbout(releases, isZh), user, updateInfo));
 });
 
 // -------------------------- webhook endpoints -------------------------------
@@ -1744,11 +1780,12 @@ admin.get("/saved-replies", async (c) => {
 	const owners = await getUsersByIds(c.env.DB, ownerIds);
 	const ownersById = new Map<string, string>();
 	for (const [id, u] of owners) ownersById.set(id, u.name);
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	return c.html(
 		renderPage(
 			c,
 			"Saved replies",
-			renderSavedRepliesList(replies, user, ownersById),
+			renderSavedRepliesList(replies, user, ownersById, isZh),
 			user,
 			updateInfo,
 		),
@@ -1758,12 +1795,13 @@ admin.get("/saved-replies", async (c) => {
 admin.get("/saved-replies/new", async (c) => {
 	const user = await requireMod(c);
 	if (user instanceof Response) return user;
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	return c.html(
 		renderPage(
 			c,
 			"New saved reply",
-			renderSavedReplyForm({ existing: null, error: null }),
+			renderSavedReplyForm({ existing: null, error: null }, isZh),
 			user,
 			updateInfo,
 		),
@@ -1789,12 +1827,13 @@ admin.get("/saved-replies/:id", async (c) => {
 			404,
 		);
 	}
+	const isZh = getAdminLocale(c) === "zh-Hant";
 	const updateInfo = await peekCachedLatestVersion(c.env);
 	return c.html(
 		renderPage(
 			c,
 			"Edit saved reply",
-			renderSavedReplyForm({ existing: reply, error: null }),
+			renderSavedReplyForm({ existing: reply, error: null }, isZh),
 			user,
 			updateInfo,
 		),
